@@ -1,15 +1,26 @@
 ﻿// Vanilla Counterfactual Regret Minimization: https://justinsermeno.com/posts/cfr/
 
+open System
 open System.Collections.Generic
+
+module Enum =
+
+    /// Answers all values of the given enum type.
+    let getValues<'enum> =
+        Enum.GetValues(typeof<'enum>)
+            |> Seq.cast<'enum>
+            |> Seq.toArray
 
 /// Actions a player can take at a decision node: check and bet.
 let numActions = 2
 
-/// Jack, Queen, King
-let numCards = 3
+type Card =
+    | Jack = 11
+    | Queen = 12
+    | King = 13
 
-let isChanceNode history =
-    history = ""
+/// Jack, Queen, King
+let numCards = Enum.getValues<Card>.Length
 
 let isTerminalHistory history =
     match history with
@@ -20,7 +31,7 @@ let isTerminalHistory history =
         | "rrbb" -> true
         | _ -> false
 
-let terminalUtil (history : string) card1 card2 =
+let terminalUtil (history : string) (card1 : Card) (card2 : Card) =
 
     let n = history.Length
     let cardPlayer = if n % 2 = 0 then card1 else card2
@@ -40,9 +51,9 @@ let terminalUtil (history : string) card1 card2 =
 
 let cardStr card =
     match card with
-        | 0 -> "J"
-        | 1 -> "Q"
-        | 2 -> "K"
+        | Card.Jack ->  "J"
+        | Card.Queen -> "Q"
+        | Card.King ->  "K"
         | _ -> failwith "Unexpected"
 
 type Vector =
@@ -94,7 +105,7 @@ module Vector =
     let sum (Vector array) =
         Array.sum array
 
-type InfoSet(key) =
+type InfoSet() =
 
     let mutable regretSum = Vector.zeroCreate numActions
     let mutable strategySum = Vector.zeroCreate numActions
@@ -135,27 +146,19 @@ type InfoSet(key) =
         with set (x) = regretSum <- x
         and get () = regretSum
 
-    (*
-    member __.Key = key
-    member __.RegretSum = regretSum
-    member __.StrategySum = strategySum
-    *)
+let getInfoSet (infoSetMap : Dictionary<string, InfoSet>) (card : Card) history =
 
-let getInfoSet (infoSetMap : Dictionary<string, InfoSet>) card history =
-
-    let key = cardStr card + " " + history
+    let key = sprintf "%s %s" (cardStr card) history
     let flag, infoSet = infoSetMap.TryGetValue(key)
     if flag then infoSet
     else
-        let infoSet = InfoSet(key)
+        let infoSet = InfoSet()
         infoSetMap.[key] <- infoSet
         infoSet
 
 let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
 
-    if isChanceNode history then
-        chanceUtil infoSetMap |> float
-    elif isTerminalHistory history then
+    if isTerminalHistory history then
         terminalUtil history card1 card2 |> float
     else
         let n = history.Length
@@ -191,13 +194,13 @@ let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
             infoSet.RegretSum <- infoSet.RegretSum + (pr1 * prC * regrets)
         util
 
-and chanceUtil infoSetMap =
+let chanceUtil infoSetMap =
     let mutable expectedValue = 0.0
     let numPossibilities = float (2 * 3)
-    for i = 0 to numCards - 1 do
-        for j = 0 to numCards - 1 do
-            if i <> j then
-                expectedValue <- expectedValue + cfr infoSetMap "rr" i j 1.0 1.0 (1.0 / numPossibilities)
+    for card1 in Enum.getValues<Card> do
+        for card2 in Enum.getValues<Card> do
+            if card1 <> card2 then
+                expectedValue <- expectedValue + cfr infoSetMap "rr" card1 card2 1.0 1.0 (1.0 / numPossibilities)
     expectedValue / numPossibilities
 
 let report expectedGameValue (infoSetMap : Dictionary<string, InfoSet>) =
@@ -215,7 +218,7 @@ let main argv =
     let mutable expectedGameValue = 0.0
 
     for _ = 1 to numIterations do
-        expectedGameValue <- expectedGameValue + cfr infoSetMap "" -1 -1 1.0 1.0 1.0
+        expectedGameValue <- expectedGameValue + chanceUtil infoSetMap
         for (KeyValue(_, infoSet)) in infoSetMap do
             infoSet.NextStrategy()
 
