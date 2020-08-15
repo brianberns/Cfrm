@@ -146,25 +146,25 @@ type InfoSet() =
         with set (x) = regretSum <- x
         and get () = regretSum
 
-let getInfoSet (infoSetMap : Dictionary<string, InfoSet>) (card : Card) history =
+let getInfoSet infoSetMap card history =
 
     let key = sprintf "%s %s" (cardStr card) history
-    let flag, infoSet = infoSetMap.TryGetValue(key)
-    if flag then infoSet
-    else
-        let infoSet = InfoSet()
-        infoSetMap.[key] <- infoSet
-        infoSet
+    match infoSetMap |> Map.tryFind key with
+        | Some infoSet -> infoSet, infoSetMap
+        | None ->
+            let infoSet = InfoSet()
+            let infoSetMap = infoSetMap |> Map.add key infoSet
+            infoSet, infoSetMap
 
 let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
 
     if isTerminalHistory history then
-        terminalUtil history card1 card2 |> float
+        let util = terminalUtil history card1 card2 |> float
+        util, infoSetMap
     else
         let n = history.Length
-        let isPlayer1 =
-            n % 2 = 0
-        let infoSet =
+        let isPlayer1 = (n % 2 = 0)
+        let infoSet, infoSetMap =
             getInfoSet
                 infoSetMap
                 (if isPlayer1 then card1 else card2)
@@ -175,16 +175,18 @@ let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
         else
             infoSet.ReachPr <- infoSet.ReachPr + pr2
 
-        let actionUtils =
+        let actionUtils, infoSetMap =
             [| "c"; "b" |]
                 |> Array.indexed
-                |> Array.map (fun (i, action) ->
+                |> Array.mapFold (fun acc (i, action) ->
                     let nextHistory = history + action
                     if isPlayer1 then
-                        -1.0 * (cfr infoSetMap nextHistory card1 card2 (pr1 * strategy.[i]) pr2 prC)
+                        let util, acc = cfr acc nextHistory card1 card2 (pr1 * strategy.[i]) pr2 prC
+                        -1.0 * util, acc
                     else
-                        -1.0 * cfr infoSetMap nextHistory card1 card2 pr1 (pr2 * strategy.[i]) prC)
-                |> Vector
+                        let util, acc = cfr acc nextHistory card1 card2 pr1 (pr2 * strategy.[i]) prC
+                        -1.0 * util, acc) infoSetMap
+                |> fun (utils, acc) -> Vector utils, acc
 
         let util = (actionUtils * strategy) |> Vector.sum
         let regrets = actionUtils - util
@@ -192,38 +194,42 @@ let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
             infoSet.RegretSum <- infoSet.RegretSum + (pr2 * prC * regrets)
         else
             infoSet.RegretSum <- infoSet.RegretSum + (pr1 * prC * regrets)
-        util
+        util, infoSetMap
 
 let chanceUtil infoSetMap =
-    let mutable expectedValue = 0.0
-    let numPossibilities = float (2 * 3)
-    for card1 in Enum.getValues<Card> do
-        for card2 in Enum.getValues<Card> do
-            if card1 <> card2 then
-                expectedValue <- expectedValue + cfr infoSetMap "rr" card1 card2 1.0 1.0 (1.0 / numPossibilities)
-    expectedValue / numPossibilities
 
-let report expectedGameValue (infoSetMap : Dictionary<string, InfoSet>) =
+    let cardPairs =
+        [|
+            for card1 in Enum.getValues<Card> do
+                for card2 in Enum.getValues<Card> do
+                    if card1 <> card2 then
+                        yield card1, card2
+        |]
 
-    printfn "Player 1 expected value: %g" expectedGameValue
-    printfn "Player 2 expected value: %g" -expectedGameValue
-    for (KeyValue(key, infoSet)) in infoSetMap do
-        printfn "%s: %A" key (infoSet.GetAverageStrategy())
+    let den = float cardPairs.Length
+    let num, infoSetMap =
+        ((0.0, infoSetMap), cardPairs)
+            ||> Seq.fold (fun (accUtil, accMap) (card1, card2) ->
+                let util, accMap = cfr accMap "rr" card1 card2 1.0 1.0 (1.0 / den)
+                accUtil + util, accMap)
+    num / den, infoSetMap
 
 [<EntryPoint>]
 let main argv =
 
-    let mutable infoSetMap = Dictionary<string, InfoSet>()
     let numIterations = 100000
-    let mutable expectedGameValue = 0.0
+    let accUtil, infoSetMap =
+        ((0.0, Map.empty), [|1..numIterations|])
+            ||> Seq.fold (fun (accUtil, accMap) _ ->
+                let util, accMap = chanceUtil accMap
+                for (_, infoSet) in accMap |> Map.toSeq do
+                    infoSet.NextStrategy()
+                accUtil + util, accMap)
+    let expectedGameValue = accUtil / (float) numIterations
 
-    for _ = 1 to numIterations do
-        expectedGameValue <- expectedGameValue + chanceUtil infoSetMap
-        for (KeyValue(_, infoSet)) in infoSetMap do
-            infoSet.NextStrategy()
-
-    expectedGameValue <- expectedGameValue / (float) numIterations
-
-    report expectedGameValue infoSetMap
+    printfn "Player 1 expected value: %g" expectedGameValue
+    printfn "Player 2 expected value: %g" -expectedGameValue
+    for (key, infoSet : InfoSet) in infoSetMap |> Map.toSeq do
+        printfn "%s: %A" key (infoSet.GetAverageStrategy())
 
     0
