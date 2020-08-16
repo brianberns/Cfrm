@@ -105,46 +105,56 @@ module Vector =
     let sum (Vector array) =
         Array.sum array
 
-type InfoSet() =
+type InfoSet =
+    {
+        Key : string
+        NumActions : int
+        RegretSum : Vector
+        StrategySum : Vector
+        Strategy : Vector
+        ReachProb : float
+        ReachProbSum : float
+    }
 
-    let mutable regretSum = Vector.zeroCreate numActions
-    let mutable strategySum = Vector.zeroCreate numActions
-    let mutable strategy = Vector.replicate numActions (1.0 / float numActions)
-    let mutable reachPr = 0.0
-    let mutable reachPrSum = 0.0
+module InfoSet =
 
-    let calcStrategy () =
-        let strategy = regretSum |> Vector.map (max 0.0)
+    let create key numActions =
+        {
+            Key = key
+            NumActions = numActions
+            RegretSum = Vector.zeroCreate numActions
+            StrategySum = Vector.zeroCreate numActions
+            Strategy = Vector.replicate numActions (1.0 / float numActions)
+            ReachProb = 0.0
+            ReachProbSum = 0.0
+        }
+
+    let calcStrategy infoSet =
+        let strategy = infoSet.RegretSum |> Vector.map (max 0.0)
         let total = Vector.sum strategy
         if total > 0.0 then
             strategy / total
         else
             Vector.replicate numActions (1.0 / float numActions)
 
-    member __.NextStrategy() =
-        strategySum <- strategySum + (reachPr * strategy)
-        strategy <- calcStrategy ()
-        reachPrSum <- reachPrSum + reachPr
-        reachPr <- 0.0
+    let nextStrategy infoSet =
+        {
+            infoSet with
+                StrategySum = infoSet.StrategySum + (infoSet.ReachProb * infoSet.Strategy)
+                Strategy = calcStrategy infoSet
+                ReachProbSum = infoSet.ReachProbSum + infoSet.ReachProb
+                ReachProb = 0.0
+        }
 
-    member __.GetAverageStrategy() =
+    let getAverageStrategy infoSet =
         let strategy =
-            (strategySum / reachPrSum)
+            (infoSet.StrategySum / infoSet.ReachProbSum)
                 |> Vector.map (fun x ->
                     if x < 0.0001 then 0.0
                     else x)
         let total = Vector.sum strategy
         strategy / total
 
-    member __.Strategy = strategy
-
-    member __.ReachPr
-        with set (x) = reachPr <- x
-        and get () = reachPr
-
-    member __.RegretSum
-        with set (x) = regretSum <- x
-        and get () = regretSum
 
 let getInfoSet infoSetMap card history =
 
@@ -152,7 +162,7 @@ let getInfoSet infoSetMap card history =
     match infoSetMap |> Map.tryFind key with
         | Some infoSet -> infoSet, infoSetMap
         | None ->
-            let infoSet = InfoSet()
+            let infoSet = InfoSet.create key numActions
             let infoSetMap = infoSetMap |> Map.add key infoSet
             infoSet, infoSetMap
 
@@ -170,10 +180,9 @@ let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
                 (if isPlayer1 then card1 else card2)
                 history
         let strategy = infoSet.Strategy
-        if isPlayer1 then
-            infoSet.ReachPr <- infoSet.ReachPr + pr1
-        else
-            infoSet.ReachPr <- infoSet.ReachPr + pr2
+        let infoSet =
+            let prob = if isPlayer1 then pr1 else pr2
+            { infoSet with ReachProb = infoSet.ReachProb + prob }
 
         let actionUtils, infoSetMap =
             [| "c"; "b" |]
@@ -190,10 +199,14 @@ let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
 
         let util = (actionUtils * strategy) |> Vector.sum
         let regrets = actionUtils - util
-        if isPlayer1 then
-            infoSet.RegretSum <- infoSet.RegretSum + (pr2 * prC * regrets)
-        else
-            infoSet.RegretSum <- infoSet.RegretSum + (pr1 * prC * regrets)
+        let infoSet =
+            let regret =
+                if isPlayer1 then
+                    pr2 * prC * regrets
+                else
+                    pr1 * prC * regrets
+            { infoSet with RegretSum = infoSet.RegretSum + regret }
+        let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
         util, infoSetMap
 
 let chanceUtil infoSetMap =
@@ -222,14 +235,16 @@ let main argv =
         ((0.0, Map.empty), [|1..numIterations|])
             ||> Seq.fold (fun (accUtil, accMap) _ ->
                 let util, accMap = chanceUtil accMap
-                for (_, infoSet) in accMap |> Map.toSeq do
-                    infoSet.NextStrategy()
+                let accMap =
+                    accMap
+                        |> Map.map (fun _ infoSet ->
+                            infoSet |> InfoSet.nextStrategy)
                 accUtil + util, accMap)
     let expectedGameValue = accUtil / (float) numIterations
 
     printfn "Player 1 expected value: %g" expectedGameValue
     printfn "Player 2 expected value: %g" -expectedGameValue
     for (key, infoSet : InfoSet) in infoSetMap |> Map.toSeq do
-        printfn "%s: %A" key (infoSet.GetAverageStrategy())
+        printfn "%s: %A" key (infoSet |> InfoSet.getAverageStrategy)
 
     0
