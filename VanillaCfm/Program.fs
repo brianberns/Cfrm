@@ -174,7 +174,7 @@ let cfr infoSetMap (cards : Card[]) =
                 let strategy, infoSet =
                     let reach = [| reach0; reach1 |].[iPlayer]
                     infoSet |> InfoSet.getStrategy reach
-                let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
+                // no need to add the modified info set back into the map yet, because it shouldn't be visited again recursively
 
                 let actionUtils, infoSetMap =
                     [| "c"; "b" |]
