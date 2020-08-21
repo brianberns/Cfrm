@@ -115,20 +115,24 @@ module InfoSet =
             strategy / total
         else
             let value = 1.0 / float strategy.Length
-            strategy |> Vector.map (fun _ -> value)
+            strategy |> Vector.map (fun _ -> value)   // replace with uniform distribution
 
-    let getStrategy (weight : float) infoSet =
+    let getStrategy (reach : float) infoSet =
         let strategy =
             infoSet.RegretSum
                 |> Vector.map (max 0.0)
                 |> normalize
         let infoSet =
             { infoSet with
-                StrategySum = infoSet.StrategySum + (weight * strategy) }
+                StrategySum = infoSet.StrategySum + (reach * strategy) }
         strategy, infoSet
 
     let getAverageStrategy infoSet =
-        normalize infoSet.StrategySum
+        infoSet.StrategySum
+            |> normalize 
+            |> Vector.map (fun x ->
+                if x < 0.001 then 0.0 else x)   // eliminate very low probability actions
+            |> normalize
 
 type InfoSetMap = Map<string, InfoSet>
 
