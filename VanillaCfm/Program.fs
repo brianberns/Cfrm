@@ -184,8 +184,9 @@ let cfr infoSetMap (cards : Card[]) =
                                     loop accMap nextHistory (reach0 * strategy.[i]) reach1
                                 else
                                     loop accMap nextHistory reach0 (reach1 * strategy.[i])
+                            let util = -1.0 * util
                             let accUtil = accUtil + (strategy.[i] * util)
-                            -1.0 * util, (accMap, accUtil)) (infoSetMap, 0.0)
+                            util, (accMap, accUtil)) (infoSetMap, 0.0)
                         |> fun (utils, (accMap, nodeUtil)) ->
                             Vector utils, accMap, nodeUtil
 
@@ -204,7 +205,7 @@ let cfr infoSetMap (cards : Card[]) =
 let main argv =
 
     let cards = Enum.getValues<Card>
-    let numIterations = 100000
+    let numIterations = 1000000
     let rng = Random(0)
     let accUtil, infoSetMap =
         ((0.0, Map.empty), [|1..numIterations|])
