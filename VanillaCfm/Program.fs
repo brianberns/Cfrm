@@ -1,7 +1,6 @@
-﻿// Vanilla Counterfactual Regret Minimization: https://justinsermeno.com/posts/cfr/
+﻿// http://modelai.gettysburg.edu/2013/cfr/
 
 open System
-open System.Collections.Generic
 
 module Enum =
 
@@ -10,6 +9,18 @@ module Enum =
         Enum.GetValues(typeof<'enum>)
             |> Seq.cast<'enum>
             |> Seq.toArray
+
+/// Shuffles the given array in place.
+/// From http://rosettacode.org/wiki/Knuth_shuffle#F.23
+let knuthShuffle (rng : Random) (items : _[]) =
+    let swap i j =
+        let item = items.[i]
+        items.[i] <- items.[j]
+        items.[j] <- item
+    let len = items.Length
+    [0 .. len - 2]
+        |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
+    items
 
 /// Actions a player can take at a decision node: check and bet.
 let numActions = 2
@@ -21,33 +32,6 @@ type Card =
 
 /// Jack, Queen, King
 let numCards = Enum.getValues<Card>.Length
-
-let isTerminalHistory history =
-    match history with
-        | "rrcc"
-        | "rrcbc"
-        | "rrcbb"
-        | "rrbc"
-        | "rrbb" -> true
-        | _ -> false
-
-let terminalUtil (history : string) (card1 : Card) (card2 : Card) =
-
-    let n = history.Length
-    let cardPlayer = if n % 2 = 0 then card1 else card2
-    let cardOpponent = if n % 2 = 0 then card2 else card1
-
-    match history with
-        | "rrcbc"
-        | "rrbc" -> 1
-        | "rrcc" ->
-            if cardPlayer > cardOpponent then 1
-            else -1
-        | "rrcbb"
-        | "rrbb" ->
-            if cardPlayer > cardOpponent then 2
-            else -2
-        | _ -> failwith "Unexpcted"
 
 let cardStr card =
     match card with
@@ -110,135 +94,123 @@ type InfoSet =
         Key : string
         NumActions : int
         RegretSum : Vector
-        StrategySum : Vector
         Strategy : Vector
-        ReachProb : float
-        ReachProbSum : float
+        StrategySum : Vector
     }
 
 module InfoSet =
+
+    let uniform numActions =
+        Vector.replicate numActions (1.0 / float numActions)
 
     let create key numActions =
         {
             Key = key
             NumActions = numActions
             RegretSum = Vector.zeroCreate numActions
+            Strategy = uniform numActions
             StrategySum = Vector.zeroCreate numActions
-            Strategy = Vector.replicate numActions (1.0 / float numActions)
-            ReachProb = 0.0
-            ReachProbSum = 0.0
         }
 
-    let calcStrategy infoSet =
-        let strategy = infoSet.RegretSum |> Vector.map (max 0.0)
-        let total = Vector.sum strategy
-        if total > 0.0 then
-            strategy / total
-        else
-            Vector.replicate numActions (1.0 / float numActions)
-
-    let nextStrategy infoSet =
-        {
-            infoSet with
-                StrategySum = infoSet.StrategySum + (infoSet.ReachProb * infoSet.Strategy)
-                Strategy = calcStrategy infoSet
-                ReachProbSum = infoSet.ReachProbSum + infoSet.ReachProb
-                ReachProb = 0.0
-        }
+    let getStrategy (weight : float) infoSet =
+        let strategy =
+            let strategy = infoSet.RegretSum |> Vector.map (max 0.0)
+            let total = Vector.sum strategy
+            if total > 0.0 then
+                strategy / total
+            else
+                uniform numActions
+        let infoSet =
+            { infoSet with
+                StrategySum = infoSet.StrategySum + (weight * strategy) }
+        strategy, infoSet
 
     let getAverageStrategy infoSet =
-        let strategy =
-            (infoSet.StrategySum / infoSet.ReachProbSum)
-                |> Vector.map (fun x ->
-                    if x < 0.0001 then 0.0
-                    else x)
-        let total = Vector.sum strategy
-        strategy / total
+        let total = Vector.sum infoSet.StrategySum
+        if total > 0.0 then
+            infoSet.StrategySum / total
+        else
+            uniform infoSet.NumActions
 
+type InfoSetMap = Map<string, InfoSet>
 
-let getInfoSet infoSetMap card history =
+module InfoSetMap =
 
-    let key = sprintf "%s %s" (cardStr card) history
-    match infoSetMap |> Map.tryFind key with
-        | Some infoSet -> infoSet, infoSetMap
-        | None ->
-            let infoSet = InfoSet.create key numActions
-            let infoSetMap = infoSetMap |> Map.add key infoSet
-            infoSet, infoSetMap
+    let getInfoSet card history (infoSetMap : InfoSetMap) =
 
-let rec cfr infoSetMap history card1 card2 pr1 pr2 prC =
+        let key = sprintf "%s %s" (cardStr card) history
+        match infoSetMap |> Map.tryFind key with
+            | Some infoSet -> infoSet, infoSetMap
+            | None ->
+                let infoSet = InfoSet.create key numActions
+                let infoSetMap = infoSetMap |> Map.add key infoSet
+                infoSet, infoSetMap
 
-    if isTerminalHistory history then
-        let util = terminalUtil history card1 card2 |> float
-        util, infoSetMap
-    else
+let cfr infoSetMap (cards : Card[]) =
+
+    let rec loop infoSetMap (history : string) reach0 reach1 =
+
         let n = history.Length
-        let isPlayer1 = (n % 2 = 0)
-        let infoSet, infoSetMap =
-            getInfoSet
-                infoSetMap
-                (if isPlayer1 then card1 else card2)
-                history
-        let strategy = infoSet.Strategy
-        let infoSet =
-            let prob = if isPlayer1 then pr1 else pr2
-            { infoSet with ReachProb = infoSet.ReachProb + prob }
+        let iPlayer = n % 2
+        let iOpponent = 1 - iPlayer
+        let sign =
+            if cards.[iPlayer] > cards.[iOpponent] then 1
+            else -1
 
-        let actionUtils, infoSetMap =
-            [| "c"; "b" |]
-                |> Array.indexed
-                |> Array.mapFold (fun acc (i, action) ->
-                    let nextHistory = history + action
-                    if isPlayer1 then
-                        let util, acc = cfr acc nextHistory card1 card2 (pr1 * strategy.[i]) pr2 prC
-                        -1.0 * util, acc
-                    else
-                        let util, acc = cfr acc nextHistory card1 card2 pr1 (pr2 * strategy.[i]) prC
-                        -1.0 * util, acc) infoSetMap
-                |> fun (utils, acc) -> Vector utils, acc
+        let terminalUtility = function
+            | "cbc" | "bc" -> Some 1            // player's bet was followed by a check, so player wins ante
+            | "cc" -> Some (sign * 1)           // no bets: high card wins ante only
+            | "cbb" | "bb" -> Some (sign * 2)   // two bets: high card wins ante and bet
+            | _ -> None
 
-        let util = (actionUtils * strategy) |> Vector.sum
-        let regrets = actionUtils - util
-        let infoSet =
-            let regret =
-                if isPlayer1 then
-                    pr2 * prC * regrets
-                else
-                    pr1 * prC * regrets
-            { infoSet with RegretSum = infoSet.RegretSum + regret }
-        let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
-        util, infoSetMap
+        match terminalUtility history with
+            | Some util -> float util, infoSetMap
+            | _ ->
 
-let chanceUtil infoSetMap =
+                let infoSet, infoSetMap =
+                    infoSetMap |> InfoSetMap.getInfoSet cards.[iPlayer] history
+                let strategy, infoSet =
+                    let reach = [| reach0; reach1 |].[iPlayer]
+                    infoSet |> InfoSet.getStrategy reach
+                let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
 
-    let cardPairs =
-        [|
-            for card1 in Enum.getValues<Card> do
-                for card2 in Enum.getValues<Card> do
-                    if card1 <> card2 then
-                        yield card1, card2
-        |]
+                let actionUtils, infoSetMap, nodeUtil =
+                    [| "c"; "b" |]
+                        |> Array.indexed
+                        |> Array.mapFold (fun (accMap, accUtil) (i, action) ->
+                            let nextHistory = history + action
+                            let util, accMap =
+                                if iPlayer = 0 then
+                                    loop accMap nextHistory (reach0 * strategy.[i]) reach1
+                                else
+                                    loop accMap nextHistory reach0 (reach1 * strategy.[i])
+                            let accUtil = accUtil + (strategy.[i] * util)
+                            -1.0 * util, (accMap, accUtil)) (infoSetMap, 0.0)
+                        |> fun (utils, (accMap, nodeUtil)) ->
+                            Vector utils, accMap, nodeUtil
 
-    let den = float cardPairs.Length
-    let num, infoSetMap =
-        ((0.0, infoSetMap), cardPairs)
-            ||> Seq.fold (fun (accUtil, accMap) (card1, card2) ->
-                let util, accMap = cfr accMap "rr" card1 card2 1.0 1.0 (1.0 / den)
-                accUtil + util, accMap)
-    num / den, infoSetMap
+                let regret = actionUtils - nodeUtil
+                let infoSet =
+                    let regretSum =
+                        let reach = [| reach1; reach0 |].[iPlayer]
+                        infoSet.RegretSum + (reach * regret)
+                    { infoSet with RegretSum = regretSum }
+                let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
+                nodeUtil, infoSetMap
+
+    loop infoSetMap "" 1.0 1.0
 
 [<EntryPoint>]
 let main argv =
 
+    let cards = Enum.getValues<Card>
     let numIterations = 100000
+    let rng = Random(0)
     let accUtil, infoSetMap =
         ((0.0, Map.empty), [|1..numIterations|])
             ||> Seq.fold (fun (accUtil, accMap) _ ->
-                let util, accMap = chanceUtil accMap
-                let accMap =
-                    accMap
-                        |> Map.map (fun _ infoSet ->
-                            infoSet |> InfoSet.nextStrategy)
+                knuthShuffle rng cards |> ignore
+                let util, accMap = cfr accMap cards
                 accUtil + util, accMap)
     let expectedGameValue = accUtil / (float) numIterations
 
