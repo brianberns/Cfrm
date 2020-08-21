@@ -97,7 +97,6 @@ type InfoSet =
         Key : string
         NumActions : int
         RegretSum : Vector
-        Strategy : Vector
         StrategySum : Vector
     }
 
@@ -111,7 +110,6 @@ module InfoSet =
             Key = key
             NumActions = numActions
             RegretSum = Vector.zeroCreate numActions
-            Strategy = uniform numActions
             StrategySum = Vector.zeroCreate numActions
         }
 
@@ -207,7 +205,7 @@ let cfr infoSetMap (cards : Card[]) =
 let main argv =
 
     let cards = Enum.getValues<Card>
-    let numIterations = 1000000
+    let numIterations = 100000
     let rng = Random(0)
     let accUtil, infoSetMap =
         ((0.0, Map.empty), [|1..numIterations|])
@@ -223,7 +221,7 @@ let main argv =
         printfn "%s: %A" key (infoSet |> InfoSet.getAverageStrategy)
 
     // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
-    let epsilon = 0.004
+    let epsilon = 0.03
     let alpha = infoSetMap.["J "] |> InfoSet.getAverageStrategy |> Vector.get 1
     assert(alpha >= 0.0 && alpha <= 1.0/3.0)
     assert(abs((infoSetMap.["Q "] |> InfoSet.getAverageStrategy |> Vector.get 0) - 1.0) < epsilon)
