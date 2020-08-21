@@ -1,4 +1,5 @@
 ﻿// http://modelai.gettysburg.edu/2013/cfr/
+// https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py
 
 open System
 
@@ -44,6 +45,10 @@ type Vector =
 
     | Vector of float[]
 
+    member vector.Length =
+        let (Vector array) = vector
+        array.Length
+
     member vector.Item(i) =
         let (Vector array) = vector
         array.[i]
@@ -78,12 +83,6 @@ module Vector =
     let zeroCreate count =
         Vector (Array.zeroCreate count)
 
-    let replicate n initial =
-        Vector (Array.replicate n initial)
-
-    let get index (Vector array) =
-        array.[index]
-
     let map mapping (Vector array) =
         array
             |> Array.map mapping
@@ -102,9 +101,6 @@ type InfoSet =
 
 module InfoSet =
 
-    let uniform numActions =
-        Vector.replicate numActions (1.0 / float numActions)
-
     let create key numActions =
         {
             Key = key
@@ -113,25 +109,26 @@ module InfoSet =
             StrategySum = Vector.zeroCreate numActions
         }
 
+    let private normalize strategy =
+        let total = Vector.sum strategy
+        if total > 0.0 then
+            strategy / total
+        else
+            let value = 1.0 / float strategy.Length
+            strategy |> Vector.map (fun _ -> value)
+
     let getStrategy (weight : float) infoSet =
         let strategy =
-            let strategy = infoSet.RegretSum |> Vector.map (max 0.0)
-            let total = Vector.sum strategy
-            if total > 0.0 then
-                strategy / total
-            else
-                uniform numActions
+            infoSet.RegretSum
+                |> Vector.map (max 0.0)
+                |> normalize
         let infoSet =
             { infoSet with
                 StrategySum = infoSet.StrategySum + (weight * strategy) }
         strategy, infoSet
 
     let getAverageStrategy infoSet =
-        let total = Vector.sum infoSet.StrategySum
-        if total > 0.0 then
-            infoSet.StrategySum / total
-        else
-            uniform infoSet.NumActions
+        normalize infoSet.StrategySum
 
 type InfoSetMap = Map<string, InfoSet>
 
@@ -222,10 +219,13 @@ let main argv =
 
     // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
     let epsilon = 0.03
-    let alpha = infoSetMap.["J "] |> InfoSet.getAverageStrategy |> Vector.get 1
+    assert(abs(expectedGameValue - (-1.0/18.0)) < epsilon)
+    let get key i =
+        (infoSetMap.[key] |> InfoSet.getAverageStrategy).[i]
+    let alpha = get "J " 1
     assert(alpha >= 0.0 && alpha <= 1.0/3.0)
-    assert(abs((infoSetMap.["Q "] |> InfoSet.getAverageStrategy |> Vector.get 0) - 1.0) < epsilon)
-    assert(abs((infoSetMap.["Q cb"] |> InfoSet.getAverageStrategy |> Vector.get 1) - (alpha + 1.0/3.0)) < epsilon)
-    assert(abs((infoSetMap.["K "] |> InfoSet.getAverageStrategy |> Vector.get 1) - (3.0 * alpha)) < epsilon)
+    assert(abs(get "Q " 0 - 1.0) < epsilon)
+    assert(abs(get "Q cb" 1 - (alpha + 1.0/3.0)) < epsilon)
+    assert(abs(get "K " 1 - (3.0 * alpha)) < epsilon)
 
     0
