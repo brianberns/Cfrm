@@ -81,6 +81,9 @@ module Vector =
     let replicate n initial =
         Vector (Array.replicate n initial)
 
+    let get index (Vector array) =
+        array.[index]
+
     let map mapping (Vector array) =
         array
             |> Array.map mapping
@@ -174,22 +177,21 @@ let cfr infoSetMap (cards : Card[]) =
                     infoSet |> InfoSet.getStrategy reach
                 let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
 
-                let actionUtils, infoSetMap, nodeUtil =
+                let actionUtils, infoSetMap =
                     [| "c"; "b" |]
                         |> Array.indexed
-                        |> Array.mapFold (fun (accMap, accUtil) (i, action) ->
+                        |> Array.mapFold (fun accMap (i, action) ->
                             let nextHistory = history + action
                             let util, accMap =
                                 if iPlayer = 0 then
                                     loop accMap nextHistory (reach0 * strategy.[i]) reach1
                                 else
                                     loop accMap nextHistory reach0 (reach1 * strategy.[i])
-                            let util = -1.0 * util
-                            let accUtil = accUtil + (strategy.[i] * util)
-                            util, (accMap, accUtil)) (infoSetMap, 0.0)
-                        |> fun (utils, (accMap, nodeUtil)) ->
-                            Vector utils, accMap, nodeUtil
+                            -1.0 * util, accMap) infoSetMap
+                        |> fun (utils, accMap) ->
+                            Vector utils, accMap
 
+                let nodeUtil = Vector.sum (strategy * actionUtils)
                 let regret = actionUtils - nodeUtil
                 let infoSet =
                     let regretSum =
@@ -219,5 +221,13 @@ let main argv =
     printfn "Player 2 expected value: %g" -expectedGameValue
     for (key, infoSet : InfoSet) in infoSetMap |> Map.toSeq do
         printfn "%s: %A" key (infoSet |> InfoSet.getAverageStrategy)
+
+    // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
+    let epsilon = 0.004
+    let alpha = infoSetMap.["J "] |> InfoSet.getAverageStrategy |> Vector.get 1
+    assert(alpha >= 0.0 && alpha <= 1.0/3.0)
+    assert(abs((infoSetMap.["Q "] |> InfoSet.getAverageStrategy |> Vector.get 0) - 1.0) < epsilon)
+    assert(abs((infoSetMap.["Q cb"] |> InfoSet.getAverageStrategy |> Vector.get 1) - (alpha + 1.0/3.0)) < epsilon)
+    assert(abs((infoSetMap.["K "] |> InfoSet.getAverageStrategy |> Vector.get 1) - (3.0 * alpha)) < epsilon)
 
     0
