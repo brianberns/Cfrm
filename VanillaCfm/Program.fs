@@ -2,6 +2,7 @@
 // https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py
 
 open System
+open MathNet.Numerics.LinearAlgebra
 
 module Enum =
 
@@ -23,88 +24,12 @@ let knuthShuffle (rng : Random) (items : _[]) =
         |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
     items
 
-/// Actions a player can take at a decision node: check and bet.
-let numActions = 2
-
-type Card =
-    | Jack = 11
-    | Queen = 12
-    | King = 13
-
-/// Jack, Queen, King
-let numCards = Enum.getValues<Card>.Length
-
-let cardStr card =
-    match card with
-        | Card.Jack ->  "J"
-        | Card.Queen -> "Q"
-        | Card.King ->  "K"
-        | _ -> failwith "Unexpected"
-
-type Vector =
-
-    | Vector of float[]
-
-    member vector.Length =
-        let (Vector array) = vector
-        array.Length
-
-    member vector.Item(i) =
-        let (Vector array) = vector
-        array.[i]
-
-    static member (+)(Vector array1, Vector array2) =
-        Array.zip array1 array2
-            |> Array.map (fun (x, y) -> x + y)
-            |> Vector
-
-    static member (-)(Vector array, x) =
-        array
-            |> Array.map (fun y -> y - x)
-            |> Vector
-
-    static member (*)(x, Vector array) =
-        array
-            |> Array.map ((*) x)
-            |> Vector
-
-    static member (*)(Vector array1, Vector array2) =
-        Array.zip array1 array2
-            |> Array.map (fun (x, y) -> x * y)
-            |> Vector
-
-    static member (/)(Vector array, den) =
-        array
-            |> Array.map (fun num -> num / den)
-            |> Vector
-
-module Vector =
-
-    let zeroCreate count =
-        Vector (Array.zeroCreate count)
-
-    let length (Vector array) =
-        array.Length
-
-    let map mapping (Vector array) =
-        array
-            |> Array.map mapping
-            |> Vector
-
-    let mapi mapping (Vector array) =
-        array
-            |> Array.mapi mapping
-            |> Vector
-
-    let sum (Vector array) =
-        Array.sum array
-
 type InfoSet =
     {
         Key : string
         NumActions : int
-        RegretSum : Vector
-        StrategySum : Vector
+        RegretSum : Vector<float>
+        StrategySum : Vector<float>
     }
 
 module InfoSet =
@@ -113,8 +38,8 @@ module InfoSet =
         {
             Key = key
             NumActions = numActions
-            RegretSum = Vector.zeroCreate numActions
-            StrategySum = Vector.zeroCreate numActions
+            RegretSum = DenseVector.zero numActions
+            StrategySum = DenseVector.zero numActions
         }
 
     let private normalize strategy =
@@ -122,8 +47,8 @@ module InfoSet =
         if total > 0.0 then
             strategy / total
         else
-            let value = 1.0 / float strategy.Length
-            strategy |> Vector.map (fun _ -> value)   // replace with uniform distribution
+            (1.0 / float strategy.Count)
+                |> DenseVector.create strategy.Count   // uniform distribution
 
     let getStrategy (reach : float) infoSet =
         let strategy =
@@ -144,6 +69,26 @@ module InfoSet =
 
 type InfoSetMap = Map<string, InfoSet>
 
+/// Actions a player can take at a decision node: check and bet.
+let numActions = 2
+
+let numPlayers = 2
+
+type Card =
+    | Jack = 11
+    | Queen = 12
+    | King = 13
+
+/// Jack, Queen, King
+let numCards = Enum.getValues<Card>.Length
+
+let cardStr card =
+    match card with
+        | Card.Jack ->  "J"
+        | Card.Queen -> "Q"
+        | Card.King ->  "K"
+        | _ -> failwith "Unexpected"
+
 module InfoSetMap =
 
     let getInfoSet card history (infoSetMap : InfoSetMap) =
@@ -156,32 +101,19 @@ module InfoSetMap =
                 let infoSetMap = infoSetMap |> Map.add key infoSet
                 infoSet, infoSetMap
 
-let dot (vector : Vector) (vectors : Vector[]) =
-    assert(vector.Length = vectors.Length)
-    assert(vectors |> Seq.map Vector.length |> Seq.distinct |> Seq.length = 1)
-    Vector [|
-        let nCols = vectors.[0].Length
-        for iCol = 0 to nCols - 1 do
-            let col =
-                vectors
-                    |> Array.map (fun v -> v.[iCol])
-                    |> Vector
-            yield Vector.sum (vector * col)
-    |]
-
-let getCounterFactualReach (probs : Vector) iPlayer =
+let getCounterFactualReach (probs : Vector<_>) iPlayer =
     seq {
-        for i = 0 to probs.Length - 1 do
+        for i = 0 to probs.Count - 1 do
             if i <> iPlayer then
                 yield probs.[i]
     } |> Seq.fold (*) 1.0
 
 let cfr infoSetMap (cards : Card[]) =
 
-    let rec loop infoSetMap (history : string) (reaches : Vector) : Vector * InfoSetMap =
+    let rec loop infoSetMap (history : string) (reaches : Vector<_>) =
 
         let n = history.Length
-        let iPlayer = n % 2
+        let iPlayer = n % numPlayers
         let iOpponent = 1 - iPlayer
         let sign =
             if cards.[iPlayer] > cards.[iOpponent] then 1.0
@@ -190,19 +122,19 @@ let cfr infoSetMap (cards : Card[]) =
         let terminalUtility = function
             | "cbc" ->   // player 1 wins ante only
                 assert(iPlayer = 1)
-                [| -1.0; 1.0 |] |> Vector |> Some
+                [| -1.0; 1.0 |] |> DenseVector.ofArray |> Some
             | "bc" ->    // player 0 wins ante only
                 assert(iPlayer = 0)
-                [| 1.0; -1.0 |] |> Vector |> Some
+                [| 1.0; -1.0 |] |> DenseVector.ofArray |> Some
             | "cc" ->    // no bets: high card wins ante only
                 assert(iPlayer = 0)
-                [| sign * 1.0; sign * -1.0 |] |> Vector |> Some
+                [| sign * 1.0; sign * -1.0 |] |> DenseVector.ofArray |> Some
             | "cbb" ->   // two bets: high card wins ante and bet
                 assert(iPlayer = 1)
-                [| sign * -2.0; sign * 2.0 |] |> Vector |> Some
+                [| sign * -2.0; sign * 2.0 |] |> DenseVector.ofArray |> Some
             | "bb" ->    // two bets: high card wins ante and bet
                 assert(iPlayer = 0)
-                [| sign * 2.0; sign * -2.0 |] |> Vector |> Some
+                [| sign * 2.0; sign * -2.0 |] |> DenseVector.ofArray |> Some
             | _ -> None
 
         match terminalUtility history with
@@ -229,26 +161,26 @@ let cfr infoSetMap (cards : Card[]) =
                             if iPlayer = 0 then
                                 loop accMap nextHistory reaches
                             else
-                                loop accMap nextHistory reaches) (Vector Array.empty, infoSetMap)
+                                loop accMap nextHistory reaches) (DenseVector.ofArray Array.empty, infoSetMap)
                         |> Seq.toArray
                         |> Array.unzip
-                let counterFactualValues = counterFactualValues.[1..]
-                assert(counterFactualValues.Length = 2)
+                assert(counterFactualValues.Length = numActions + 1)
+                let counterFactualValues = counterFactualValues.[1..] |> DenseMatrix.ofRowSeq
                 let infoSetMap = infoSetMaps |> Array.last
 
-                let nodeValues = dot strategy counterFactualValues
+                let nodeValues = strategy * counterFactualValues
                 let infoSet =
                     let cfReach = getCounterFactualReach reaches iPlayer
                     let regretSum =
                         infoSet.RegretSum
                             |> Vector.mapi (fun ia oldRegret ->
-                                let regret = counterFactualValues.[ia].[iPlayer] - nodeValues.[iPlayer]
+                                let regret = counterFactualValues.[ia, iPlayer] - nodeValues.[iPlayer]
                                 oldRegret + (cfReach * regret))
                     { infoSet with RegretSum = regretSum }
                 let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
                 nodeValues, infoSetMap
 
-    loop infoSetMap "" (Vector [| 1.0; 1.0 |])
+    loop infoSetMap "" (DenseVector.create numPlayers 1.0)
 
 [<EntryPoint>]
 let main argv =
@@ -257,7 +189,7 @@ let main argv =
     let numIterations = 100000
     let rng = Random(0)
     let accUtils, infoSetMap =
-        ((Vector.zeroCreate 2, Map.empty), [|1..numIterations|])
+        ((DenseVector.zero numPlayers, Map.empty), [|1..numIterations|])
             ||> Seq.fold (fun (accUtils, accMap) _ ->
                 knuthShuffle rng cards |> ignore
                 let utils, accMap = cfr accMap cards
