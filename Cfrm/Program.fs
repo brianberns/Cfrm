@@ -24,20 +24,29 @@ let knuthShuffle (rng : Random) (items : _[]) =
         |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
     items
 
+type GameDesc =
+    {
+        NumPlayers : int
+        Actions : string[]
+        // Hidden : string[(*iPlayer*)][]
+    }
+
+let kuhnPoker =
+    {
+        NumPlayers = 2
+        Actions = [| "c"; "b" |]
+    }
+
 type InfoSet =
     {
-        Key : string
-        NumActions : int
         RegretSum : Vector<float>
         StrategySum : Vector<float>
     }
 
 module InfoSet =
 
-    let create key numActions =
+    let create numActions =
         {
-            Key = key
-            NumActions = numActions
             RegretSum = DenseVector.zero numActions
             StrategySum = DenseVector.zero numActions
         }
@@ -91,13 +100,14 @@ let cardStr card =
 
 module InfoSetMap =
 
-    let getInfoSet card history (infoSetMap : InfoSetMap) =
+    let getKey card history =
+        sprintf "%s%s" (cardStr card) history
 
-        let key = sprintf "%s %s" (cardStr card) history
+    let getInfoSet key (infoSetMap : InfoSetMap) =
         match infoSetMap |> Map.tryFind key with
             | Some infoSet -> infoSet, infoSetMap
             | None ->
-                let infoSet = InfoSet.create key numActions
+                let infoSet = InfoSet.create numActions
                 let infoSetMap = infoSetMap |> Map.add key infoSet
                 infoSet, infoSetMap
 
@@ -141,8 +151,9 @@ let cfr infoSetMap (cards : Card[]) =
             | Some util -> util, infoSetMap
             | _ ->
 
+                let key = InfoSetMap.getKey cards.[iPlayer] history
                 let infoSet, infoSetMap =
-                    infoSetMap |> InfoSetMap.getInfoSet cards.[iPlayer] history
+                    infoSetMap |> InfoSetMap.getInfoSet key
                 let strategy, infoSet =
                     infoSet |> InfoSet.getStrategy reaches.[iPlayer]
                 // no need to add the modified info set back into the map yet, because it shouldn't be visited again recursively
@@ -177,7 +188,7 @@ let cfr infoSetMap (cards : Card[]) =
                                 let regret = counterFactualValues.[ia, iPlayer] - nodeValues.[iPlayer]
                                 oldRegret + (cfReach * regret))
                     { infoSet with RegretSum = regretSum }
-                let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
+                let infoSetMap = infoSetMap |> Map.add key infoSet
                 nodeValues, infoSetMap
 
     loop infoSetMap "" (DenseVector.create numPlayers 1.0)
@@ -205,10 +216,10 @@ let main argv =
     assert(abs(expectedGameValues.[0] - (-1.0/18.0)) < epsilon)
     let get key i =
         (infoSetMap.[key] |> InfoSet.getAverageStrategy).[i]
-    let alpha = get "J " 1
+    let alpha = get "J" 1
     assert(alpha >= 0.0 && alpha <= 1.0/3.0)
-    assert(abs(get "Q " 0 - 1.0) < epsilon)
-    assert(abs(get "Q cb" 1 - (alpha + 1.0/3.0)) < epsilon)
-    assert(abs(get "K " 1 - (3.0 * alpha)) < epsilon)
+    assert(abs(get "Q" 0 - 1.0) < epsilon)
+    assert(abs(get "Qcb" 1 - (alpha + 1.0/3.0)) < epsilon)
+    assert(abs(get "K" 1 - (3.0 * alpha)) < epsilon)
 
     0
