@@ -83,9 +83,17 @@ module Vector =
     let zeroCreate count =
         Vector (Array.zeroCreate count)
 
+    let length (Vector array) =
+        array.Length
+
     let map mapping (Vector array) =
         array
             |> Array.map mapping
+            |> Vector
+
+    let mapi mapping (Vector array) =
+        array
+            |> Array.mapi mapping
             |> Vector
 
     let sum (Vector array) =
@@ -148,59 +156,99 @@ module InfoSetMap =
                 let infoSetMap = infoSetMap |> Map.add key infoSet
                 infoSet, infoSetMap
 
+let dot (vector : Vector) (vectors : Vector[]) =
+    assert(vector.Length = vectors.Length)
+    assert(vectors |> Seq.map Vector.length |> Seq.distinct |> Seq.length = 1)
+    Vector [|
+        let nCols = vectors.[0].Length
+        for iCol = 0 to nCols - 1 do
+            let col =
+                vectors
+                    |> Array.map (fun v -> v.[iCol])
+                    |> Vector
+            yield Vector.sum (vector * col)
+    |]
+
+let getCounterFactualReach (probs : Vector) iPlayer =
+    seq {
+        for i = 0 to probs.Length - 1 do
+            if i <> iPlayer then
+                yield probs.[i]
+    } |> Seq.fold (*) 1.0
+
 let cfr infoSetMap (cards : Card[]) =
 
-    let rec loop infoSetMap (history : string) reach0 reach1 =
+    let rec loop infoSetMap (history : string) (reaches : Vector) : Vector * InfoSetMap =
 
         let n = history.Length
         let iPlayer = n % 2
         let iOpponent = 1 - iPlayer
         let sign =
-            if cards.[iPlayer] > cards.[iOpponent] then 1
-            else -1
+            if cards.[iPlayer] > cards.[iOpponent] then 1.0
+            else -1.0
 
         let terminalUtility = function
-            | "cbc" | "bc" -> Some 1            // player's bet was followed by a check, so player wins ante
-            | "cc" -> Some (sign * 1)           // no bets: high card wins ante only
-            | "cbb" | "bb" -> Some (sign * 2)   // two bets: high card wins ante and bet
+            | "cbc" ->   // player 1 wins ante only
+                assert(iPlayer = 1)
+                [| -1.0; 1.0 |] |> Vector |> Some
+            | "bc" ->    // player 0 wins ante only
+                assert(iPlayer = 0)
+                [| 1.0; -1.0 |] |> Vector |> Some
+            | "cc" ->    // no bets: high card wins ante only
+                assert(iPlayer = 0)
+                [| sign * 1.0; sign * -1.0 |] |> Vector |> Some
+            | "cbb" ->   // two bets: high card wins ante and bet
+                assert(iPlayer = 1)
+                [| sign * -2.0; sign * 2.0 |] |> Vector |> Some
+            | "bb" ->    // two bets: high card wins ante and bet
+                assert(iPlayer = 0)
+                [| sign * 2.0; sign * -2.0 |] |> Vector |> Some
             | _ -> None
 
         match terminalUtility history with
-            | Some util -> float util, infoSetMap
+            | Some util -> util, infoSetMap
             | _ ->
 
                 let infoSet, infoSetMap =
                     infoSetMap |> InfoSetMap.getInfoSet cards.[iPlayer] history
                 let strategy, infoSet =
-                    let reach = [| reach0; reach1 |].[iPlayer]
-                    infoSet |> InfoSet.getStrategy reach
+                    infoSet |> InfoSet.getStrategy reaches.[iPlayer]
                 // no need to add the modified info set back into the map yet, because it shouldn't be visited again recursively
 
-                let actionUtils, infoSetMap =
+                // let counterFactualValues, infoSetMap =
+                let counterFactualValues, infoSetMaps =
                     [| "c"; "b" |]
-                        |> Array.indexed
-                        |> Array.mapFold (fun accMap (i, action) ->
+                        |> Seq.indexed
+                        |> Seq.scan (fun (_, accMap) (ia, action) ->
                             let nextHistory = history + action
-                            let util, accMap =
-                                if iPlayer = 0 then
-                                    loop accMap nextHistory (reach0 * strategy.[i]) reach1
-                                else
-                                    loop accMap nextHistory reach0 (reach1 * strategy.[i])
-                            -1.0 * util, accMap) infoSetMap
-                        |> fun (utils, accMap) ->
-                            Vector utils, accMap
+                            let reaches =
+                                reaches
+                                    |> Vector.mapi (fun ip reach ->
+                                        if ip = iPlayer then reach * strategy.[ia]
+                                        else reach)
+                            if iPlayer = 0 then
+                                loop accMap nextHistory reaches
+                            else
+                                loop accMap nextHistory reaches) (Vector Array.empty, infoSetMap)
+                        |> Seq.toArray
+                        |> Array.unzip
+                let counterFactualValues = counterFactualValues.[1..]
+                assert(counterFactualValues.Length = 2)
+                let infoSetMap = infoSetMaps |> Array.last
 
-                let nodeUtil = Vector.sum (strategy * actionUtils)
-                let regret = actionUtils - nodeUtil
+                let nodeValues = dot strategy counterFactualValues
                 let infoSet =
+                    let cfReach = getCounterFactualReach reaches iPlayer
                     let regretSum =
-                        let reach = [| reach1; reach0 |].[iPlayer]
-                        infoSet.RegretSum + (reach * regret)
+                        infoSet.RegretSum
+                            |> Vector.mapi (fun ia oldRegret ->
+                                let regret = counterFactualValues.[ia].[iPlayer] - nodeValues.[iPlayer]
+                                oldRegret + (cfReach * regret))
                     { infoSet with RegretSum = regretSum }
                 let infoSetMap = infoSetMap |> Map.add infoSet.Key infoSet
-                nodeUtil, infoSetMap
+                nodeValues, infoSetMap
 
-    loop infoSetMap "" 1.0 1.0
+    loop infoSetMap "" (Vector [| 1.0; 1.0 |])
 
 [<EntryPoint>]
 let main argv =
@@ -208,22 +256,21 @@ let main argv =
     let cards = Enum.getValues<Card>
     let numIterations = 100000
     let rng = Random(0)
-    let accUtil, infoSetMap =
-        ((0.0, Map.empty), [|1..numIterations|])
-            ||> Seq.fold (fun (accUtil, accMap) _ ->
+    let accUtils, infoSetMap =
+        ((Vector.zeroCreate 2, Map.empty), [|1..numIterations|])
+            ||> Seq.fold (fun (accUtils, accMap) _ ->
                 knuthShuffle rng cards |> ignore
-                let util, accMap = cfr accMap cards
-                accUtil + util, accMap)
-    let expectedGameValue = accUtil / (float) numIterations
+                let utils, accMap = cfr accMap cards
+                accUtils + utils, accMap)
+    let expectedGameValues = accUtils / (float) numIterations
 
-    printfn "Player 1 expected value: %g" expectedGameValue
-    printfn "Player 2 expected value: %g" -expectedGameValue
+    printfn "Expected value: %A" expectedGameValues
     for (key, infoSet : InfoSet) in infoSetMap |> Map.toSeq do
         printfn "%s: %A" key (infoSet |> InfoSet.getAverageStrategy)
 
     // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
     let epsilon = 0.03
-    assert(abs(expectedGameValue - (-1.0/18.0)) < epsilon)
+    assert(abs(expectedGameValues.[0] - (-1.0/18.0)) < epsilon)
     let get key i =
         (infoSetMap.[key] |> InfoSet.getAverageStrategy).[i]
     let alpha = get "J " 1
