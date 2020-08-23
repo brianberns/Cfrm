@@ -15,8 +15,8 @@ type IGameState<'priv, 'action> =
         /// Unique key for this game state.
         abstract member Key : string
 
-        /// Per-player payoffs if this is a terminal game state.
-        abstract member TerminalValuesOpt : Option<float[]>
+        /// Per-player payoffs if this is a terminal game state; null otherwise.
+        abstract member TerminalValues : float[]
 
         /// Legal actions available in this game state.
         abstract member LegalActions : 'action[]
@@ -37,13 +37,9 @@ module CounterFactualRegret =
 
         let rec loop infoSetMap (reachProbs : Vector<_>) (gameState : IGameState<_, _>) =
 
-            match gameState.TerminalValuesOpt with
+            match gameState.TerminalValues with
 
-                    // game is over
-                | Some values ->
-                    DenseVector.ofArray values, infoSetMap
-
-                | _ ->
+                | null ->
 
                         // obtain info set for this game state
                     let infoSet, infoSetMap =
@@ -92,6 +88,10 @@ module CounterFactualRegret =
                     let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
                     result, infoSetMap
 
+                    // game is over
+                | values ->
+                    DenseVector.ofArray values, infoSetMap
+
         loop
             infoSetMap
             (DenseVector.create numPlayers 1.0)
@@ -119,3 +119,12 @@ module CounterFactualRegret =
                         |> InfoSet.getAverageStrategy
                         |> Vector.toArray)
         expectedGameValues.ToArray(), strategyMap
+
+[<AbstractClass; Sealed>]
+type CounterFactualRegret private () =
+
+    static member Run(numIterations, numPlayers, getRandomInitialState) =
+        let func = FuncConvert.FromFunc<IGameState<_, _>>(getRandomInitialState)
+        let expectedGameValues, strategyMap =
+            CounterFactualRegret.run numIterations numPlayers func
+        expectedGameValues, strategyMap |> Map.toSeq |> dict

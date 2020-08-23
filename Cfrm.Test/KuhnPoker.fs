@@ -36,41 +36,37 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
 
     let actionString =
         actions
-            |> Array.map (function
-                | Action.Check -> 'c'
-                | Action.Bet -> 'b'
-                | _ -> failwith "Unexpected action")
+            |> Array.map (fun action ->
+                action.ToString().ToLower().[0])
             |> String
 
     let key =
         let cardChar =
-            match cards.[currentPlayerIdx] with
-                | Card.Jack ->  'J'
-                | Card.Queen -> 'Q'
-                | Card.King ->  'K'
-                | _ -> failwith "Unexpected card"
+            cards.[currentPlayerIdx].ToString().[0]
         sprintf "%c%s" cardChar actionString
 
-    let terminalValuesOpt =
+    let terminalValues =
         match actionString with
             | "cbc" ->   // player 1 wins ante only
-                Some [| -1; 1 |]
+                [| -1.0; 1.0 |]
             | "bc" ->    // player 0 wins ante only
-                Some [| 1; -1 |]
+                [| 1.0; -1.0 |]
             | "cc" ->    // no bets: high card wins ante only
-                let sign = compare cards.[0] cards.[1]
-                Some [| sign * 1; sign * -1 |]
+                let sign = compare cards.[0] cards.[1] |> float
+                [| sign * 1.0; sign * -1.0 |]
             | "cbb" ->   // two bets: high card wins ante and bet
-                let sign = compare cards.[1] cards.[0]
-                Some [| sign * -2; sign * 2 |]
+                let sign = compare cards.[1] cards.[0] |> float
+                [| sign * -2.0; sign * 2.0 |]
             | "bb" ->    // two bets: high card wins ante and bet
-                let sign = compare cards.[0] cards.[1]
-                Some [| sign * 2; sign * -2 |]
-            | _ -> None
-            |> Option.map (Array.map float)
+                let sign = compare cards.[0] cards.[1] |> float
+                [| sign * 2.0; sign * -2.0 |]
+            | _ -> null
+
+    let legalActions =
+        [| Action.Check; Action.Bet |]
 
     do
-        assert(cards.Length = 2)
+        Assert.AreEqual(2, cards.Length)
 
     interface IGameState<Card, Action> with
 
@@ -83,11 +79,11 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
         member __.Key =
             key
 
-        member __.TerminalValuesOpt =
-            terminalValuesOpt
+        member __.TerminalValues =
+            terminalValues
 
         member __.LegalActions =
-            [| Action.Check; Action.Bet |]
+            legalActions
 
         member __.AddAction(action) =
             let actions' =
