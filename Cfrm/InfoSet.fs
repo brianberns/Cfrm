@@ -1,42 +1,60 @@
-﻿// http://modelai.gettysburg.edu/2013/cfr/
-// https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py
-
-namespace Cfrm
+﻿namespace Cfrm
 
 open MathNet.Numerics.LinearAlgebra
 
 type private InfoSet =
     {
+        /// Per-action sum of all regrets computed so far. Positive regret
+        /// indicates that we would rather have taken a different action.
+        /// Negative regret indicates that we are happy with the action.
         RegretSum : Vector<float>
+
+        /// Per-action sum of all strategies computed so far. A strategy
+        /// gives the probability of taking each legal action at this point
+        /// in a game.
         StrategySum : Vector<float>
     }
 
 module private InfoSet =
 
+    /// Creates a new info set with the given number of legal actions.
     let create numActions =
         {
             RegretSum = DenseVector.zero numActions
             StrategySum = DenseVector.zero numActions
         }
 
-    let private normalize strategy =
-        let total = Vector.sum strategy
+    /// Creates a normalized strategy vector from the given values.
+    let private normalize values =
+        let total = Vector.sum values
         if total > 0.0 then
-            strategy / total
+            values / total   // normalize
         else
-            (1.0 / float strategy.Count)
-                |> DenseVector.create strategy.Count   // uniform distribution
+            (1.0 / float values.Count)
+                |> DenseVector.create values.Count   // use uniform distribution instead
 
-    let getStrategy (reach : float) infoSet =
+    /// Creates a new strategy for the given info set using the given
+    /// reach probability.
+    let getStrategy (reachProb : float) infoSet =
+
+        assert(reachProb >= 0.0 && reachProb <= 1.0)
+
+            // compute strategy from current regrets
         let strategy =
             infoSet.RegretSum
                 |> Vector.map (max 0.0)
                 |> normalize
-        let infoSet =
-            { infoSet with
-                StrategySum = infoSet.StrategySum + (reach * strategy) }
-        strategy, infoSet
 
+            // accumulate strategy sum
+        let infoSet' =
+            { infoSet with
+                StrategySum =
+                    infoSet.StrategySum + (reachProb * strategy) }
+
+        strategy, infoSet'
+
+    /// Gets the average strategy for the given info set. This converges on
+    /// a Nash equilibrium.
     let getAverageStrategy infoSet =
         infoSet.StrategySum
             |> normalize 
@@ -44,10 +62,14 @@ module private InfoSet =
                 if x < 0.001 then 0.0 else x)   // eliminate very low probability actions
             |> normalize
 
+/// Maps keys (which typically represent game histories) to
+/// known info sets.
 type private InfoSetMap = Map<string, InfoSet>
 
 module private InfoSetMap =
 
+    /// Obtains an info set for the given key, creating one if
+    /// it doesn't already exist.
     let getInfoSet key numActions (infoSetMap : InfoSetMap) =
         match infoSetMap |> Map.tryFind key with
             | Some infoSet ->
@@ -56,5 +78,5 @@ module private InfoSetMap =
                 infoSet, infoSetMap
             | None ->
                 let infoSet = InfoSet.create numActions
-                let infoSetMap = infoSetMap |> Map.add key infoSet
-                infoSet, infoSetMap
+                let infoSetMap' = infoSetMap |> Map.add key infoSet
+                infoSet, infoSetMap'
