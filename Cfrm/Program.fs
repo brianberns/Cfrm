@@ -4,39 +4,6 @@
 open System
 open MathNet.Numerics.LinearAlgebra
 
-module Enum =
-
-    /// Answers all values of the given enum type.
-    let getValues<'enum> =
-        Enum.GetValues(typeof<'enum>)
-            |> Seq.cast<'enum>
-            |> Seq.toArray
-
-/// Shuffles the given array in place.
-/// From http://rosettacode.org/wiki/Knuth_shuffle#F.23
-let knuthShuffle (rng : Random) (items : _[]) =
-    let swap i j =
-        let item = items.[i]
-        items.[i] <- items.[j]
-        items.[j] <- item
-    let len = items.Length
-    [0 .. len - 2]
-        |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
-    items
-
-type GameDesc =
-    {
-        NumPlayers : int
-        Actions : string[]
-        // Hidden : string[(*iPlayer*)][]
-    }
-
-let kuhnPoker =
-    {
-        NumPlayers = 2
-        Actions = [| "c"; "b" |]
-    }
-
 type InfoSet =
     {
         RegretSum : Vector<float>
@@ -78,38 +45,29 @@ module InfoSet =
 
 type InfoSetMap = Map<string, InfoSet>
 
-/// Actions a player can take at a decision node: check and bet.
-let numActions = 2
-
-let numPlayers = 2
-
-type Card =
-    | Jack = 11
-    | Queen = 12
-    | King = 13
-
-/// Jack, Queen, King
-let numCards = Enum.getValues<Card>.Length
-
-let cardStr card =
-    match card with
-        | Card.Jack ->  "J"
-        | Card.Queen -> "Q"
-        | Card.King ->  "K"
-        | _ -> failwith "Unexpected"
-
 module InfoSetMap =
 
-    let getKey card history =
-        sprintf "%s%s" (cardStr card) history
-
-    let getInfoSet key (infoSetMap : InfoSetMap) =
+    let getInfoSet key numActions (infoSetMap : InfoSetMap) =
         match infoSetMap |> Map.tryFind key with
-            | Some infoSet -> infoSet, infoSetMap
+            | Some infoSet ->
+                assert(infoSet.RegretSum.Count = numActions)
+                assert(infoSet.StrategySum.Count = numActions)
+                infoSet, infoSetMap
             | None ->
                 let infoSet = InfoSet.create numActions
                 let infoSetMap = infoSetMap |> Map.add key infoSet
                 infoSet, infoSetMap
+
+type IGameState<'priv, 'action> =
+    interface
+        abstract member NumPlayers : int
+        abstract member CurrentPlayerIdx : int
+        abstract member Infos : int (*iPlayer*) -> seq<'priv>
+        abstract member Key : string
+        abstract member TerminalValuesOpt : Option<Vector<float>>
+        abstract member LegalActions : 'action[]
+        abstract member AddAction : 'action -> IGameState<'priv, 'action>
+    end
 
 let getCounterFactualReach (probs : Vector<_>) iPlayer =
     seq {
@@ -118,92 +76,157 @@ let getCounterFactualReach (probs : Vector<_>) iPlayer =
                 yield probs.[i]
     } |> Seq.fold (*) 1.0
 
-let cfr infoSetMap (cards : Card[]) =
+let cfr infoSetMap (initialState : IGameState<_, _>) =
 
-    let rec loop infoSetMap (history : string) (reaches : Vector<_>) =
+    let rec loop infoSetMap (reaches : Vector<_>) (gameState : IGameState<_, _>) =
 
-        let n = history.Length
-        let iPlayer = n % numPlayers
-        let iOpponent = 1 - iPlayer
-        let sign =
-            if cards.[iPlayer] > cards.[iOpponent] then 1.0
-            else -1.0
-
-        let terminalUtility = function
-            | "cbc" ->   // player 1 wins ante only
-                assert(iPlayer = 1)
-                [| -1.0; 1.0 |] |> DenseVector.ofArray |> Some
-            | "bc" ->    // player 0 wins ante only
-                assert(iPlayer = 0)
-                [| 1.0; -1.0 |] |> DenseVector.ofArray |> Some
-            | "cc" ->    // no bets: high card wins ante only
-                assert(iPlayer = 0)
-                [| sign * 1.0; sign * -1.0 |] |> DenseVector.ofArray |> Some
-            | "cbb" ->   // two bets: high card wins ante and bet
-                assert(iPlayer = 1)
-                [| sign * -2.0; sign * 2.0 |] |> DenseVector.ofArray |> Some
-            | "bb" ->    // two bets: high card wins ante and bet
-                assert(iPlayer = 0)
-                [| sign * 2.0; sign * -2.0 |] |> DenseVector.ofArray |> Some
-            | _ -> None
-
-        match terminalUtility history with
-            | Some util -> util, infoSetMap
+        match gameState.TerminalValuesOpt with
+            | Some values -> values, infoSetMap
             | _ ->
 
-                let key = InfoSetMap.getKey cards.[iPlayer] history
                 let infoSet, infoSetMap =
-                    infoSetMap |> InfoSetMap.getInfoSet key
+                    infoSetMap
+                        |> InfoSetMap.getInfoSet
+                            gameState.Key
+                            gameState.LegalActions.Length
                 let strategy, infoSet =
-                    infoSet |> InfoSet.getStrategy reaches.[iPlayer]
+                    infoSet
+                        |> InfoSet.getStrategy
+                            reaches.[gameState.CurrentPlayerIdx]
                 // no need to add the modified info set back into the map yet, because it shouldn't be visited again recursively
 
-                // let counterFactualValues, infoSetMap =
                 let counterFactualValues, infoSetMaps =
-                    [| "c"; "b" |]
+                    gameState.LegalActions
                         |> Seq.indexed
                         |> Seq.scan (fun (_, accMap) (ia, action) ->
-                            let nextHistory = history + action
+                            let nextState = gameState.AddAction(action)
                             let reaches =
                                 reaches
                                     |> Vector.mapi (fun ip reach ->
-                                        if ip = iPlayer then reach * strategy.[ia]
-                                        else reach)
-                            if iPlayer = 0 then
-                                loop accMap nextHistory reaches
-                            else
-                                loop accMap nextHistory reaches) (DenseVector.ofArray Array.empty, infoSetMap)
+                                        if ip = gameState.CurrentPlayerIdx then
+                                            reach * strategy.[ia]
+                                        else
+                                            reach)
+                            loop accMap reaches nextState)
+                                (DenseVector.ofArray Array.empty, infoSetMap)
                         |> Seq.toArray
                         |> Array.unzip
-                assert(counterFactualValues.Length = numActions + 1)
+                assert(counterFactualValues.Length = gameState.LegalActions.Length + 1)
                 let counterFactualValues = counterFactualValues.[1..] |> DenseMatrix.ofRowSeq
                 let infoSetMap = infoSetMaps |> Array.last
 
                 let nodeValues = strategy * counterFactualValues
                 let infoSet =
-                    let cfReach = getCounterFactualReach reaches iPlayer
+                    let cfReach = getCounterFactualReach reaches gameState.CurrentPlayerIdx
                     let regretSum =
                         infoSet.RegretSum
                             |> Vector.mapi (fun ia oldRegret ->
-                                let regret = counterFactualValues.[ia, iPlayer] - nodeValues.[iPlayer]
+                                let regret = counterFactualValues.[ia, gameState.CurrentPlayerIdx] - nodeValues.[gameState.CurrentPlayerIdx]
                                 oldRegret + (cfReach * regret))
                     { infoSet with RegretSum = regretSum }
-                let infoSetMap = infoSetMap |> Map.add key infoSet
+                let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
                 nodeValues, infoSetMap
 
-    loop infoSetMap "" (DenseVector.create numPlayers 1.0)
+    loop infoSetMap (DenseVector.create initialState.NumPlayers 1.0) initialState
+
+module Enum =
+
+    /// Answers all values of the given enum type.
+    let getValues<'enum> =
+        Enum.GetValues(typeof<'enum>)
+            |> Seq.cast<'enum>
+            |> Seq.toArray
+
+/// Shuffles the given array in place.
+/// From http://rosettacode.org/wiki/Knuth_shuffle#F.23
+let knuthShuffle (rng : Random) (items : _[]) =
+    let swap i j =
+        let item = items.[i]
+        items.[i] <- items.[j]
+        items.[j] <- item
+    let len = items.Length
+    [0 .. len - 2]
+        |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
+    items
+
+type Card =
+    | Jack = 11
+    | Queen = 12
+    | King = 13
+
+type Action =
+    | Check = 0
+    | Bet = 1
+
+type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
+
+    let currentPlayerIdx =
+        actions.Length % 2
+
+    let actionString =
+        actions
+            |> Array.map (function
+                | Action.Check -> 'c'
+                | Action.Bet -> 'b'
+                | _ -> failwith "Unexpected action")
+            |> String
+
+    let key =
+        let cardChar =
+            match cards.[currentPlayerIdx] with
+                | Card.Jack ->  'J'
+                | Card.Queen -> 'Q'
+                | Card.King ->  'K'
+                | _ -> failwith "Unexpected card"
+        sprintf "%c%s" cardChar actionString
+
+    let terminalValuesOpt =
+        match actionString with
+            | "cbc" ->   // player 1 wins ante only
+                Some [| -1; 1 |]
+            | "bc" ->    // player 0 wins ante only
+                Some [| 1; -1 |]
+            | "cc" ->    // no bets: high card wins ante only
+                let sign = compare cards.[0] cards.[1]
+                Some [| sign * 1; sign * -1 |]
+            | "cbb" ->   // two bets: high card wins ante and bet
+                let sign = compare cards.[1] cards.[0]
+                Some [| sign * -2; sign * 2 |]
+            | "bb" ->    // two bets: high card wins ante and bet
+                let sign = compare cards.[0] cards.[1]
+                Some [| sign * 2; sign * -2 |]
+            | _ -> None
+            |> Option.map (Array.map float >> DenseVector.ofArray)
+
+    do
+        assert(cards.Length = 2)
+
+    interface IGameState<Card, Action> with
+        member __.NumPlayers = 2
+        member __.CurrentPlayerIdx = currentPlayerIdx
+        member __.Infos(iPlayer) = cards.[iPlayer] |> Seq.replicate 1
+        member __.Key = key
+        member __.TerminalValuesOpt = terminalValuesOpt
+        member __.LegalActions = Enum.getValues<Action>
+        member __.AddAction(action) =
+            let actions' =
+                [| yield! actions; yield action |]
+            KuhnPokerState(cards, actions') :> _
+
+    static member Create(cards) = KuhnPokerState(cards, Array.empty)
 
 [<EntryPoint>]
 let main argv =
 
-    let cards = Enum.getValues<Card>
+    let deck = Enum.getValues<Card>
     let numIterations = 100000
     let rng = Random(0)
     let accUtils, infoSetMap =
-        ((DenseVector.zero numPlayers, Map.empty), [|1..numIterations|])
+        ((DenseVector.zero 2, Map.empty), [|1..numIterations|])
             ||> Seq.fold (fun (accUtils, accMap) _ ->
-                knuthShuffle rng cards |> ignore
-                let utils, accMap = cfr accMap cards
+                let cards = knuthShuffle rng deck |> Array.take 2
+                let state = KuhnPokerState.Create(cards)
+                let utils, accMap = cfr accMap state
                 accUtils + utils, accMap)
     let expectedGameValues = accUtils / (float) numIterations
 
