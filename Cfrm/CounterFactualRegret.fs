@@ -64,12 +64,8 @@ module CounterFactualRegret =
                     let nodeValues = strategy * counterFactualValues
                     let infoSet =
                         let cfReach = getCounterFactualReach reaches gameState.CurrentPlayerIdx
-                        let regretSum =
-                            infoSet.RegretSum
-                                |> Vector.mapi (fun ia oldRegret ->
-                                    let regret = counterFactualValues.[ia, gameState.CurrentPlayerIdx] - nodeValues.[gameState.CurrentPlayerIdx]
-                                    oldRegret + (cfReach * regret))
-                        { infoSet with RegretSum = regretSum }
+                        let regrets = cfReach * (counterFactualValues.[0.., gameState.CurrentPlayerIdx] - nodeValues.[gameState.CurrentPlayerIdx])
+                        infoSet |> InfoSet.accumulateRegret regrets
                     let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
                     nodeValues, infoSetMap
 

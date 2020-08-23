@@ -53,6 +53,11 @@ module private InfoSet =
 
         strategy, infoSet'
 
+    /// Accumulates the given regrets.
+    let accumulateRegret regrets infoSet =
+        { infoSet with
+            RegretSum = infoSet.RegretSum + regrets }
+
     /// Gets the average strategy for the given info set. This converges on
     /// a Nash equilibrium.
     let getAverageStrategy infoSet =
