@@ -21,7 +21,7 @@ module CounterFactualRegret =
                     yield probs.[i]
         } |> Seq.fold (*) 1.0
 
-    let minimize numPlayers infoSetMap (initialState : IGameState<_, _>) =
+    let private minimize numPlayers infoSetMap (initialState : IGameState<_, _>) =
 
         let rec loop infoSetMap (reaches : Vector<_>) (gameState : IGameState<_, _>) =
 
@@ -86,4 +86,10 @@ module CounterFactualRegret =
                     let utils, accMap = minimize numPlayers accMap state
                     accUtils + utils, accMap)
         let expectedGameValues = accUtils / (float) numIterations
-        expectedGameValues.ToArray(), infoSetMap
+        let strategyMap =
+            infoSetMap
+                |> Map.map (fun _ infoSet ->
+                    infoSet
+                        |> InfoSet.getAverageStrategy
+                        |> Vector.toArray)
+        expectedGameValues.ToArray(), strategyMap

@@ -5,13 +5,13 @@ namespace Cfrm
 
 open MathNet.Numerics.LinearAlgebra
 
-type InfoSet =
+type private InfoSet =
     {
         RegretSum : Vector<float>
         StrategySum : Vector<float>
     }
 
-module InfoSet =
+module private InfoSet =
 
     let create numActions =
         {
@@ -44,9 +44,9 @@ module InfoSet =
                 if x < 0.001 then 0.0 else x)   // eliminate very low probability actions
             |> normalize
 
-type InfoSetMap = Map<string, InfoSet>
+type private InfoSetMap = Map<string, InfoSet>
 
-module InfoSetMap =
+module private InfoSetMap =
 
     let getInfoSet key numActions (infoSetMap : InfoSetMap) =
         match infoSetMap |> Map.tryFind key with
