@@ -2,58 +2,75 @@
 
 open MathNet.Numerics.LinearAlgebra
 
+/// Immutable representation of a game state.
 type IGameState<'priv, 'action> =
     interface
+
+        /// Current player's 0-based index.
         abstract member CurrentPlayerIdx : int
+
+        /// Per-player private information.
         abstract member Infos : int (*iPlayer*) -> seq<'priv>
+
+        /// Unique key for this game state.
         abstract member Key : string
+
+        /// Per-player payoffs if this is a terminal game state.
         abstract member TerminalValuesOpt : Option<float[]>
+
+        /// Legal actions available in this game state.
         abstract member LegalActions : 'action[]
+
+        /// Moves to the next game state by taking the given action.
         abstract member AddAction : 'action -> IGameState<'priv, 'action>
     end
 
 module CounterFactualRegret =
 
-    let private getCounterFactualReach (probs : Vector<_>) iPlayer =
-        seq {
-            for i = 0 to probs.Count - 1 do
-                if i <> iPlayer then
-                    yield probs.[i]
-        } |> Seq.fold (*) 1.0
+    /// Computes counterfactual reach probability.
+    let private getCounterFactualReachProb (probs : Vector<_>) iPlayer =
+        let prod vector = vector |> Vector.fold (*) 1.0
+        (prod probs.[0 .. iPlayer-1]) * (prod probs.[iPlayer+1 ..])
 
-    let private minimize numPlayers infoSetMap (initialState : IGameState<_, _>) =
+    /// Minimizes regret.
+    let private minimize numPlayers infoSetMap initialState =
 
-        let rec loop infoSetMap (reaches : Vector<_>) (gameState : IGameState<_, _>) =
+        let rec loop infoSetMap (reachProbs : Vector<_>) (gameState : IGameState<_, _>) =
 
             match gameState.TerminalValuesOpt with
+
+                    // game is over
                 | Some values ->
                     DenseVector.ofArray values, infoSetMap
+
                 | _ ->
 
+                        // obtain info set for this game state
                     let infoSet, infoSetMap =
                         infoSetMap
                             |> InfoSetMap.getInfoSet
                                 gameState.Key
                                 gameState.LegalActions.Length
-                    let strategy, infoSet =
-                        infoSet
-                            |> InfoSet.getStrategy
-                                reaches.[gameState.CurrentPlayerIdx]
-                    // no need to add the modified info set back into the map yet, because it shouldn't be visited again recursively
 
+                        // update info set with current player's strategy
+                    let iCurPlayer = gameState.CurrentPlayerIdx
+                    let strategy, infoSet =
+                        infoSet |> InfoSet.getStrategy reachProbs.[iCurPlayer]
+
+                        // recurse for each legal action
                     let counterFactualValues, infoSetMaps =
                         gameState.LegalActions
                             |> Seq.indexed
-                            |> Seq.scan (fun (_, accMap) (ia, action) ->
+                            |> Seq.scan (fun (_, accMap) (iAction, action) ->
                                 let nextState = gameState.AddAction(action)
-                                let reaches =
-                                    reaches
-                                        |> Vector.mapi (fun ip reach ->
-                                            if ip = gameState.CurrentPlayerIdx then
-                                                reach * strategy.[ia]
+                                let reachProbs =
+                                    reachProbs
+                                        |> Vector.mapi (fun iPlayer reach ->
+                                            if iPlayer = iCurPlayer then
+                                                reach * strategy.[iAction]
                                             else
                                                 reach)
-                                loop accMap reaches nextState)
+                                loop accMap reachProbs nextState)
                                     (DenseVector.ofArray Array.empty, infoSetMap)
                             |> Seq.toArray
                             |> Array.unzip
@@ -61,27 +78,40 @@ module CounterFactualRegret =
                     let counterFactualValues = counterFactualValues.[1..] |> DenseMatrix.ofRowSeq
                     let infoSetMap = infoSetMaps |> Array.last
 
-                    let nodeValues = strategy * counterFactualValues
+                        // value of current game state is counterfactual values weighted by action probabilities
+                    let result = strategy * counterFactualValues
+
+                        // accumulate regret
                     let infoSet =
-                        let cfReach = getCounterFactualReach reaches gameState.CurrentPlayerIdx
-                        let regrets = cfReach * (counterFactualValues.[0.., gameState.CurrentPlayerIdx] - nodeValues.[gameState.CurrentPlayerIdx])
+                        let cfReachProb =
+                            getCounterFactualReachProb reachProbs iCurPlayer
+                        let regrets =
+                            cfReachProb * (counterFactualValues.[0.., iCurPlayer] - result.[iCurPlayer])
                         infoSet |> InfoSet.accumulateRegret regrets
+
                     let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
-                    nodeValues, infoSetMap
+                    result, infoSetMap
 
         loop
             infoSetMap
             (DenseVector.create numPlayers 1.0)
             initialState
 
-    let run numIterations numPlayers createState =
-        let accUtils, infoSetMap =
-            ((DenseVector.zero numPlayers, Map.empty), [|1..numIterations|])
+    /// Runs CFR minimization for the given number of iterations.
+    let run numIterations numPlayers getRandomInitialState =
+
+            // accumulate utilties
+        let utilities, infoSetMap =
+            let initUtils = DenseVector.zero numPlayers
+            let iterations = seq { 1 .. numIterations }
+            ((initUtils, Map.empty), iterations)
                 ||> Seq.fold (fun (accUtils, accMap) _ ->
-                    let state = createState ()
-                    let utils, accMap = minimize numPlayers accMap state
+                    let utils, accMap =
+                        getRandomInitialState () |> minimize numPlayers accMap
                     accUtils + utils, accMap)
-        let expectedGameValues = accUtils / (float) numIterations
+
+            // compute expected game values and equilibrium strategies
+        let expectedGameValues = utilities / (float) numIterations
         let strategyMap =
             infoSetMap
                 |> Map.map (fun _ infoSet ->

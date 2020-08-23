@@ -31,7 +31,7 @@ module private InfoSet =
             values / total   // normalize
         else
             (1.0 / float values.Count)
-                |> DenseVector.create values.Count   // use uniform distribution instead
+                |> DenseVector.create values.Count   // use uniform strategy instead
 
     /// Creates a new strategy for the given info set using the given
     /// reach probability.
@@ -53,7 +53,7 @@ module private InfoSet =
 
         strategy, infoSet'
 
-    /// Accumulates the given regrets.
+    /// Accumulates the given per-action regrets.
     let accumulateRegret regrets infoSet =
         { infoSet with
             RegretSum = infoSet.RegretSum + regrets }
