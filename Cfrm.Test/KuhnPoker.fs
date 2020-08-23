@@ -4,6 +4,22 @@ open System
 open Microsoft.VisualStudio.TestTools.UnitTesting
 open Cfrm
 
+[<AutoOpen>]
+module RandomExt =
+    type Random with
+
+        /// Shuffles the given array in place.
+        /// From http://rosettacode.org/wiki/Knuth_shuffle#F.23
+        member rng.Shuffle(items : _[]) =
+            let swap i j =
+                let item = items.[i]
+                items.[i] <- items.[j]
+                items.[j] <- item
+            let len = items.Length
+            [0 .. len - 2]
+                |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
+            items
+
 type Card =
     | Jack = 11
     | Queen = 12
@@ -84,18 +100,6 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
 [<TestClass>]
 type KuhnPokerTest () =
 
-    /// Shuffles the given array in place.
-    /// From http://rosettacode.org/wiki/Knuth_shuffle#F.23
-    let knuthShuffle (rng : Random) (items : _[]) =
-        let swap i j =
-            let item = items.[i]
-            items.[i] <- items.[j]
-            items.[j] <- item
-        let len = items.Length
-        [0 .. len - 2]
-            |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
-        items
-
     let run numIterations delta =
 
         let deck = [| Card.Jack; Card.Queen; Card.King |]
@@ -103,7 +107,7 @@ type KuhnPokerTest () =
 
         let expectedGameValues, infoSetMap =
             CounterFactualRegret.run numIterations 2 (fun () ->
-                knuthShuffle rng deck
+                rng.Shuffle(deck)
                     |> Array.take 2
                     |> KuhnPokerState.Create)
 
