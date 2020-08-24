@@ -22,8 +22,16 @@ type StrategyProfile(strategyMap : StrategyMap) =
 
     /// Saves the profile to a file.
     member __.Save(path) =
+
+        let prunedMap =
+            strategyMap
+                |> Map.toSeq
+                |> Seq.where (fun (_, strategy) ->
+                    strategy.Length > 1)
+                |> Map
+
         use wtr = new StreamWriter(path: string)
-        JsonConvert.SerializeObject(strategyMap, Formatting.Indented)
+        JsonConvert.SerializeObject(prunedMap, Formatting.Indented)
             |> wtr.Write
 
     /// Loads a profile from a file.
