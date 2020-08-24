@@ -2,29 +2,6 @@
 
 open MathNet.Numerics.LinearAlgebra
 
-/// Immutable representation of a game state.
-type IGameState<'priv, 'action> =
-    interface
-
-        /// Current player's 0-based index.
-        abstract member CurrentPlayerIdx : int
-
-        /// Per-player private information.
-        abstract member Infos : int (*iPlayer*) -> seq<'priv>
-
-        /// Unique key for this game state.
-        abstract member Key : string
-
-        /// Per-player payoffs if this is a terminal game state; null otherwise.
-        abstract member TerminalValues : float[]
-
-        /// Legal actions available in this game state.
-        abstract member LegalActions : 'action[]
-
-        /// Moves to the next game state by taking the given action.
-        abstract member AddAction : 'action -> IGameState<'priv, 'action>
-    end
-
 module CounterFactualRegret =
 
     /// Computes counterfactual reach probability.
@@ -32,8 +9,8 @@ module CounterFactualRegret =
         let prod vector = vector |> Vector.fold (*) 1.0
         (prod probs.[0 .. iPlayer-1]) * (prod probs.[iPlayer+1 ..])
 
-    /// Minimizes regret.
-    let private minimize numPlayers infoSetMap initialState =
+    /// Minimizes regret in the given game state.
+    let private cfr numPlayers infoSetMap initialState =
 
         let rec loop infoSetMap (reachProbs : Vector<_>) (gameState : IGameState<_, _>) =
 
@@ -98,7 +75,7 @@ module CounterFactualRegret =
             initialState
 
     /// Runs CFR minimization for the given number of iterations.
-    let run numIterations numPlayers getRandomInitialState =
+    let minimize numIterations numPlayers getRandomInitialState =
 
             // accumulate utilties
         let utilities, infoSetMap =
@@ -107,24 +84,25 @@ module CounterFactualRegret =
             ((initUtils, Map.empty), iterations)
                 ||> Seq.fold (fun (accUtils, accMap) _ ->
                     let utils, accMap =
-                        getRandomInitialState () |> minimize numPlayers accMap
+                        getRandomInitialState () |> cfr numPlayers accMap
                     accUtils + utils, accMap)
 
             // compute expected game values and equilibrium strategies
         let expectedGameValues = utilities / (float) numIterations
-        let strategyMap =
+        let strategyProfile =
             infoSetMap
                 |> Map.map (fun _ infoSet ->
                     infoSet
                         |> InfoSet.getAverageStrategy
                         |> Vector.toArray)
-        expectedGameValues.ToArray(), strategyMap
+                |> StrategyProfile
+        expectedGameValues.ToArray(), strategyProfile
 
+/// C# support.
 [<AbstractClass; Sealed>]
 type CounterFactualRegret private () =
 
-    static member Run(numIterations, numPlayers, getRandomInitialState) =
+    /// Runs CFR minimization for the given number of iterations.
+    static member Minimize(numIterations, numPlayers, getRandomInitialState) =
         let func = FuncConvert.FromFunc<IGameState<_, _>>(getRandomInitialState)
-        let expectedGameValues, strategyMap =
-            CounterFactualRegret.run numIterations numPlayers func
-        expectedGameValues, strategyMap |> Map.toSeq |> dict
+        CounterFactualRegret.minimize numIterations numPlayers func

@@ -2,6 +2,8 @@
 
 open MathNet.Numerics.LinearAlgebra
 
+/// Represents the set of nodes in a game-tree that are indistinguishable for
+/// a given player.
 type private InfoSet =
     {
         /// Per-action sum of all regrets computed so far. Positive regret
@@ -9,9 +11,7 @@ type private InfoSet =
         /// Negative regret indicates that we are happy with the action.
         RegretSum : Vector<float>
 
-        /// Per-action sum of all strategies computed so far. A strategy
-        /// gives the probability of taking each legal action at this point
-        /// in a game.
+        /// Per-action sum of all strategies computed so far.
         StrategySum : Vector<float>
     }
 
@@ -25,7 +25,7 @@ module private InfoSet =
         }
 
     /// Creates a normalized strategy vector from the given values.
-    let private normalize values =
+    let private normalize values : Strategy =
         let total = Vector.sum values
         if total > 0.0 then
             values / total   // normalize
@@ -69,7 +69,7 @@ module private InfoSet =
 
 /// Maps keys (which typically represent game histories) to
 /// known info sets.
-type private InfoSetMap = Map<string, InfoSet>
+type private InfoSetMap = Map<string (*InfoSet.Key*), InfoSet>
 
 module private InfoSetMap =
 

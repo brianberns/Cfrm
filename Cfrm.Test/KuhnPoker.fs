@@ -101,19 +101,23 @@ type KuhnPokerTest () =
         let deck = [| Card.Jack; Card.Queen; Card.King |]
         let rng = Random(0)
 
-        let expectedGameValues, infoSetMap =
-            CounterFactualRegret.run numIterations 2 (fun () ->
+        let expectedGameValues, strategyProfile =
+            CounterFactualRegret.minimize numIterations 2 (fun () ->
                 rng.Shuffle(deck)
                     |> Array.take 2
                     |> KuhnPokerState.Create)
 
         printfn "Expected value: %A" expectedGameValues
-        for (key, strategy) in infoSetMap |> Map.toSeq do
+        for (key, strategy) in strategyProfile.Strategies do
             printfn "%s: %A" key strategy
+
+        let path = "Kuhn.json"
+        strategyProfile.Save(path)
+        let strategyProfile = StrategyProfile.Load(path)
 
         // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
         Assert.AreEqual(expectedGameValues.[0], -1.0/18.0, delta)
-        let get key i = infoSetMap.[key].[i]
+        let get key i = strategyProfile.[key].[i]
         let alpha = get "J" 1
         Assert.IsTrue(alpha >= 0.0)
         Assert.IsTrue(alpha <= 1.0/3.0)

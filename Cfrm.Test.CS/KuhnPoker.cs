@@ -117,21 +117,25 @@ namespace Cfrm.Test
             var numIterations = 100000;
             var delta = 0.03;
 
-            var (expectedGameValues, infoSetMap) =
-                CounterFactualRegret.Run(numIterations, 2, () =>
+            var (expectedGameValues, strategyProfile) =
+                CounterFactualRegret.Minimize(numIterations, 2, () =>
                     {
                         var cards = Shuffle(rng, deck)[0..2];
                         return new KuhnPokerState(cards);
                     });
 
+            const string path = "Kuhn.json";
+            strategyProfile.Save(path);
+            strategyProfile = StrategyProfile.Load(path);
+
             // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
             Assert.AreEqual(expectedGameValues[0], -1.0 / 18.0, delta);
-            var alpha = infoSetMap["J"][1];
+            var alpha = strategyProfile["J"][1];
             Assert.IsTrue(alpha >= 0.0);
             Assert.IsTrue(alpha <= 1.0 / 3.0);
-            Assert.AreEqual(infoSetMap["Q"][0], 1.0, delta);
-            Assert.AreEqual(infoSetMap["Qcb"][1], alpha + 1.0 / 3.0, delta);
-            Assert.AreEqual(infoSetMap["K"][1], 3.0 * alpha, delta);
+            Assert.AreEqual(strategyProfile["Q"][0], 1.0, delta);
+            Assert.AreEqual(strategyProfile["Qcb"][1], alpha + 1.0 / 3.0, delta);
+            Assert.AreEqual(strategyProfile["K"][1], 3.0 * alpha, delta);
         }
     }
 }
