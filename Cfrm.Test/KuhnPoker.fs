@@ -131,10 +131,10 @@ type KuhnPokerTest () =
     /// Selects the index of an item from the given probability distribution.
     /// E.g. [.25; .25; .5] will select index 2 half the time.
     let selectFrom (rng : Random) probs =
-        assert(probs |> Array.isEmpty |> not)
-        assert(probs |> Array.forall (fun prob -> prob >= 0.0 && prob <= 1.0))
+        Assert.IsFalse(probs |> Array.isEmpty)
+        Assert.IsTrue(probs |> Array.forall (fun prob -> prob >= 0.0 && prob <= 1.0))
 
-            // skip the last value, assuming it is is 1.0 - sum of previous values
+            // skip the last value, assuming it is 1.0 - sum of previous values
         let sums =
             [|
                 yield! (0.0, probs.[0..probs.Length-2])
@@ -144,7 +144,7 @@ type KuhnPokerTest () =
             |]
         assert(sums.Length = probs.Length)
 
-        let r = rng.NextDouble() |> float
+        let r = rng.NextDouble()
         let i = sums |> Array.findIndex (fun prob -> prob >= r)
         assert(i < probs.Length)
         i
