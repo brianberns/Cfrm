@@ -9,7 +9,7 @@ module Program =
         let test = KuhnPokerTest()
         let stopwatch = Stopwatch()
         stopwatch.Start()
-        test.Run()
+        test.Minimize()
         stopwatch.Stop()
         printfn "%A" stopwatch.Elapsed
         0

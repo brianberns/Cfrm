@@ -110,7 +110,7 @@ namespace Cfrm.Test
         }
 
         [TestMethod]
-        public void Run()
+        public void Minimize()
         {
             var deck = new Card[] { Card.Jack, Card.Queen, Card.King };
             var rng = new Random(0);

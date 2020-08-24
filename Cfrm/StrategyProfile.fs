@@ -10,7 +10,7 @@ type private Strategy = Vector<float>
 
 /// Collection of strategies for every information set in a
 /// game.
-type StrategyProfile internal (strategyMap : StrategyMap) =
+type StrategyProfile(strategyMap : StrategyMap) =
 
     static let serializer = JsonSerializer()
 

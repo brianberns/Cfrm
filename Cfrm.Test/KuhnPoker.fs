@@ -96,22 +96,25 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
 [<TestClass>]
 type KuhnPokerTest () =
 
-    let run numIterations delta =
+    let deck = [| Card.Jack; Card.Queen; Card.King |]
 
-        let deck = [| Card.Jack; Card.Queen; Card.King |]
+    let createGame (rng : Random) =
+        rng.Shuffle(deck)
+            |> Array.take 2
+            |> KuhnPokerState.Create
+
+    let minimize numIterations delta =
+
         let rng = Random(0)
-
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 (fun () ->
-                rng.Shuffle(deck)
-                    |> Array.take 2
-                    |> KuhnPokerState.Create)
+                createGame rng)
 
         printfn "Expected value: %A" expectedGameValues
         for (key, strategy) in strategyProfile.Strategies do
             printfn "%s: %A" key strategy
 
-        let path = "Kuhn.json"
+        let path = "Kuhn.tmp.json"
         strategyProfile.Save(path)
         let strategyProfile = StrategyProfile.Load(path)
 
@@ -125,6 +128,68 @@ type KuhnPokerTest () =
         Assert.AreEqual(get "Qcb" 1, alpha + 1.0/3.0, delta)
         Assert.AreEqual(get "K" 1, 3.0 * alpha, delta)
 
+    /// Selects the index of an item from the given probability distribution.
+    /// E.g. [.25; .25; .5] will select index 2 half the time.
+    let selectFrom (rng : Random) probs =
+        assert(probs |> Array.isEmpty |> not)
+        assert(probs |> Array.forall (fun prob -> prob >= 0.0 && prob <= 1.0))
+
+            // skip the last value, assuming it is is 1.0 - sum of previous values
+        let sums =
+            [|
+                yield! (0.0, probs.[0..probs.Length-2])
+                    ||> Seq.scan (+)
+                    |> Seq.skip 1
+                yield 1.0
+            |]
+        assert(sums.Length = probs.Length)
+
+        let r = rng.NextDouble() |> float
+        let i = sums |> Array.findIndex (fun prob -> prob >= r)
+        assert(i < probs.Length)
+        i
+
+    let play rng (players : StrategyProfile[]) =
+        
+        let rec loop (gameState : IGameState<_, _>) =
+            match gameState.TerminalValues with
+                | null ->
+                    let iAction =
+                        players.[gameState.CurrentPlayerIdx].[gameState.Key]
+                            |> selectFrom rng
+                    gameState.LegalActions.[iAction]
+                        |> gameState.AddAction
+                        |> loop
+                | values ->
+                    Assert.AreEqual(2, values.Length)
+                    values.[0], values.[1]
+
+        loop (createGame rng)
+
     [<TestMethod>]
-    member __.Run() =
-        run 100000 0.03
+    member __.Minimize() =
+        minimize 100000 0.03
+
+    [<TestMethod>]
+    member __.Play() =
+
+        let nashProfile = StrategyProfile.Load("Kuhn.json")
+        let randomProfile =
+            nashProfile.Strategies
+                |> Seq.map (fun (key, strategy) ->
+                    let uniform =
+                        let len = strategy.Length
+                        Array.replicate len (1.0 / float len)
+                    key, uniform)
+                |> Map
+                |> StrategyProfile
+        let profiles =
+            [| nashProfile; randomProfile |]
+
+        let rng = Random(0)
+        let numIterations = 100000
+        let payoff0 =
+            Array.init numIterations (fun _ ->
+                profiles |> play rng |> fst)
+                |> Array.sum
+        Assert.IsTrue(payoff0 / float numIterations > 0.15)
