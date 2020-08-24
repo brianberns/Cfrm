@@ -9,6 +9,7 @@
     <PackageLicenseFile>License</PackageLicenseFile>
     <PackageIcon>Icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/brianberns/Cfrm</RepositoryUrl>
+    <Version>1.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
