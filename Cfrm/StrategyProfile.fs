@@ -12,8 +12,6 @@ type private Strategy = Vector<float>
 /// game.
 type StrategyProfile(strategyMap : StrategyMap) =
 
-    static let serializer = JsonSerializer()
-
     /// Strategies in this profile.
     member __.Strategies =
         strategyMap |> Map.toArray
@@ -25,13 +23,13 @@ type StrategyProfile(strategyMap : StrategyMap) =
     /// Saves the profile to a file.
     member __.Save(path) =
         use wtr = new StreamWriter(path: string)
-        serializer.Serialize(wtr, strategyMap)
+        JsonConvert.SerializeObject(strategyMap, Formatting.Indented)
+            |> wtr.Write
 
     /// Loads a profile from a file.
     static member Load(path) =
         use rdr = new StreamReader(path : string)
-        serializer.Deserialize(rdr, typeof<StrategyMap>)
-            :?> StrategyMap
+        JsonConvert.DeserializeObject<StrategyMap>(rdr.ReadToEnd())
             |> StrategyProfile
 
 and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
