@@ -166,9 +166,12 @@ type KuhnPokerTest () =
 
         loop (createGame rng)
 
+    member __.Minimize(numIterations, delta) =
+        minimize numIterations delta
+
     [<TestMethod>]
-    member __.Minimize() =
-        minimize 100000 0.03
+    member this.Minimize() =
+        this.Minimize(100000, 0.03)
 
     [<TestMethod>]
     member __.Play() =
