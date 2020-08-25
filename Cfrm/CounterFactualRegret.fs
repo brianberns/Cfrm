@@ -18,52 +18,62 @@ module CounterFactualRegret =
 
                 | null ->
 
-                        // obtain info set for this game state
-                    let infoSet, infoSetMap =
-                        infoSetMap
-                            |> InfoSetMap.getInfoSet
-                                gameState.Key
-                                gameState.LegalActions.Length
+                    let legalActions = gameState.LegalActions
+                    match legalActions.Length with
 
-                        // update info set with current player's strategy
-                    let iCurPlayer = gameState.CurrentPlayerIdx
-                    let strategy, infoSet =
-                        infoSet |> InfoSet.getStrategy reachProbs.[iCurPlayer]
+                        | 0 -> failwith "No legal actions"
 
-                        // recurse for each legal action
-                    let counterFactualValues, infoSetMaps =
-                        gameState.LegalActions
-                            |> Seq.indexed
-                            |> Seq.scan (fun (_, accMap) (iAction, action) ->
-                                let nextState = gameState.AddAction(action)
-                                let reachProbs =
-                                    reachProbs
-                                        |> Vector.mapi (fun iPlayer reach ->
-                                            if iPlayer = iCurPlayer then
-                                                reach * strategy.[iAction]
-                                            else
-                                                reach)
-                                loop accMap reachProbs nextState)
-                                    (DenseVector.ofArray Array.empty, infoSetMap)
-                            |> Seq.toArray
-                            |> Array.unzip
-                    assert(counterFactualValues.Length = gameState.LegalActions.Length + 1)
-                    let counterFactualValues = counterFactualValues.[1..] |> DenseMatrix.ofRowSeq
-                    let infoSetMap = infoSetMaps |> Array.last
+                            // trivial case
+                        | 1 ->
+                            let nextState = gameState.AddAction(legalActions.[0])
+                            loop infoSetMap reachProbs nextState
 
-                        // value of current game state is counterfactual values weighted by action probabilities
-                    let result = strategy * counterFactualValues
+                        | n ->
 
-                        // accumulate regret
-                    let infoSet =
-                        let cfReachProb =
-                            getCounterFactualReachProb reachProbs iCurPlayer
-                        let regrets =
-                            cfReachProb * (counterFactualValues.[0.., iCurPlayer] - result.[iCurPlayer])
-                        infoSet |> InfoSet.accumulateRegret regrets
+                                // obtain info set for this game state
+                            let infoSet, infoSetMap =
+                                infoSetMap
+                                    |> InfoSetMap.getInfoSet gameState.Key n
 
-                    let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
-                    result, infoSetMap
+                                // update info set with current player's strategy
+                            let iCurPlayer = gameState.CurrentPlayerIdx
+                            let strategy, infoSet =
+                                infoSet |> InfoSet.getStrategy reachProbs.[iCurPlayer]
+
+                                // recurse for each legal action
+                            let counterFactualValues, infoSetMaps =
+                                legalActions
+                                    |> Seq.indexed
+                                    |> Seq.scan (fun (_, accMap) (iAction, action) ->
+                                        let nextState = gameState.AddAction(action)
+                                        let reachProbs =
+                                            reachProbs
+                                                |> Vector.mapi (fun iPlayer reach ->
+                                                    if iPlayer = iCurPlayer then
+                                                        reach * strategy.[iAction]
+                                                    else
+                                                        reach)
+                                        loop accMap reachProbs nextState)
+                                            (DenseVector.ofArray Array.empty, infoSetMap)
+                                    |> Seq.toArray
+                                    |> Array.unzip
+                            assert(counterFactualValues.Length = n + 1)
+                            let counterFactualValues = counterFactualValues.[1..] |> DenseMatrix.ofRowSeq
+                            let infoSetMap = infoSetMaps |> Array.last
+
+                                // value of current game state is counterfactual values weighted by action probabilities
+                            let result = strategy * counterFactualValues
+
+                                // accumulate regret
+                            let infoSet =
+                                let cfReachProb =
+                                    getCounterFactualReachProb reachProbs iCurPlayer
+                                let regrets =
+                                    cfReachProb * (counterFactualValues.[0.., iCurPlayer] - result.[iCurPlayer])
+                                infoSet |> InfoSet.accumulateRegret regrets
+
+                            let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
+                            result, infoSetMap
 
                     // game is over
                 | values ->
