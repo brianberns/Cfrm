@@ -2,12 +2,12 @@
 
 open MathNet.Numerics.LinearAlgebra
 
-/// Per-action probability of taking each legal action in
-/// a particular information set.
+/// Per-action probability of taking each legal action in a particular
+/// information set.
 type private Strategy = Vector<float>
 
-/// Represents the set of nodes in a game-tree that are indistinguishable for
-/// a given player.
+/// Represents the set of nodes in a game-tree that are indistinguishable
+/// for a given player.
 type private InfoSet =
     {
         /// Per-action sum of all regrets computed so far. Positive regret

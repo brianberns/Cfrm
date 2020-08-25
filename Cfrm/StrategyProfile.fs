@@ -3,8 +3,7 @@
 open System.IO
 open Newtonsoft.Json
 
-/// Collection of strategies for every information set in a
-/// game.
+/// Collection of strategies for every information set in a game.
 type StrategyProfile(strategyMap : StrategyMap) =
 
     /// Key/strategy pairs in this profile.
