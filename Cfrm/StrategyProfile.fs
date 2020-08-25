@@ -1,21 +1,14 @@
 ﻿namespace Cfrm
 
 open System.IO
-open MathNet.Numerics.LinearAlgebra
 open Newtonsoft.Json
-
-/// Per-action probability of taking each legal action in
-/// a particular information set.
-type private Strategy = Vector<float>
 
 /// Collection of strategies for every information set in a
 /// game.
 type StrategyProfile(strategyMap : StrategyMap) =
 
-    do assert(strategyMap |> Map.forall (fun _ strategy -> strategy.Length > 1))
-
-    /// Strategies in this profile.
-    member __.Strategies =
+    /// Key/strategy pairs in this profile.
+    member __.StrategyPairs =
         strategyMap |> Map.toArray
 
     /// Answers the strategy with the given key.

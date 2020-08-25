@@ -22,3 +22,12 @@ type IGameState<'priv, 'action> =
         /// Moves to the next game state by taking the given action.
         abstract member AddAction : 'action -> IGameState<'priv, 'action>
     end
+
+[<AutoOpen>]
+module private GameStateExt =
+
+    type IGameState<'priv, 'action> with
+
+        /// Per-player payoffs if this is a terminal game state; None otherwise.
+        member this.TerminalValuesOpt =
+            Option.ofObj this.TerminalValues

@@ -111,7 +111,7 @@ type KuhnPokerTest () =
                 createGame rng)
 
         printfn "Expected value: %A" expectedGameValues
-        for (key, strategy) in strategyProfile.Strategies do
+        for (key, strategy) in strategyProfile.StrategyPairs do
             printfn "%s: %A" key strategy
 
         let path = "Kuhn.tmp.json"
@@ -175,7 +175,7 @@ type KuhnPokerTest () =
 
         let nashProfile = StrategyProfile.Load("Kuhn.json")
         let randomProfile =
-            nashProfile.Strategies
+            nashProfile.StrategyPairs
                 |> Seq.map (fun (key, strategy) ->
                     let uniform =
                         let len = strategy.Length
