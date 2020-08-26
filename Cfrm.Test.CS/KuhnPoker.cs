@@ -124,7 +124,7 @@ namespace Cfrm.Test
                         return new KuhnPokerState(cards);
                     });
 
-            const string path = "Kuhn.json";
+            const string path = "Kuhn.strategy";
             strategyProfile.Save(path);
             strategyProfile = StrategyProfile.Load(path);
 

@@ -114,7 +114,7 @@ type KuhnPokerTest () =
         for (key, strategy) in strategyProfile.StrategyPairs do
             printfn "%s: %A" key strategy
 
-        let path = "Kuhn.tmp.json"
+        let path = "Kuhn.tmp.strategy"
         strategyProfile.Save(path)
         let strategyProfile = StrategyProfile.Load(path)
 
@@ -170,13 +170,13 @@ type KuhnPokerTest () =
         minimize numIterations delta
 
     [<TestMethod>]
-    member this.Minimize() =
+    member this.Solve() =
         this.Minimize(100000, 0.03)
 
     [<TestMethod>]
     member __.Play() =
 
-        let nashProfile = StrategyProfile.Load("Kuhn.json")
+        let nashProfile = StrategyProfile.Load("Kuhn.strategy")
         let randomProfile =
             nashProfile.StrategyPairs
                 |> Seq.map (fun (key, strategy) ->

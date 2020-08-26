@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Kuhn.json">
+    <None Include="Kuhn.strategy">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    </None>
     <Compile Include="KuhnPoker.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

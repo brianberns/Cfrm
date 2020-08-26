@@ -1,7 +1,7 @@
 ﻿namespace Cfrm
 
 open System.IO
-open Newtonsoft.Json
+open System.Runtime.Serialization.Formatters.Binary
 
 /// Collection of strategies for every information set in a game.
 type StrategyProfile(strategyMap : StrategyMap) =
@@ -16,14 +16,16 @@ type StrategyProfile(strategyMap : StrategyMap) =
 
     /// Saves the profile to a file.
     member __.Save(path) =
-        use wtr = new StreamWriter(path: string)
-        JsonConvert.SerializeObject(strategyMap, Formatting.Indented)
-            |> wtr.Write
+        let formatter = BinaryFormatter()
+        use stream = new FileStream(path, FileMode.Create)
+        formatter.Serialize(stream, strategyMap)
 
     /// Loads a profile from a file.
     static member Load(path) =
-        use rdr = new StreamReader(path : string)
-        JsonConvert.DeserializeObject<StrategyMap>(rdr.ReadToEnd())
+        let formatter = BinaryFormatter()
+        use stream = new FileStream(path, FileMode.Open)
+        formatter.Deserialize(stream)
+            :?> StrategyMap
             |> StrategyProfile
 
 and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
