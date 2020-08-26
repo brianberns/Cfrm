@@ -1,7 +1,6 @@
 ﻿namespace Cfrm
 
 open System.IO
-open System.Runtime.Serialization.Formatters.Binary
 
 /// Collection of strategies for every information set in a game.
 type StrategyProfile(strategyMap : StrategyMap) =
@@ -16,16 +15,30 @@ type StrategyProfile(strategyMap : StrategyMap) =
 
     /// Saves the profile to a file.
     member __.Save(path) =
-        let formatter = BinaryFormatter()
         use stream = new FileStream(path, FileMode.Create)
-        formatter.Serialize(stream, strategyMap)
+        use wtr = new BinaryWriter(stream)
+        wtr.Write(strategyMap.Count)
+        for (KeyValue(key, strategy)) in strategyMap do
+            wtr.Write(key)
+            wtr.Write(uint8 strategy.Length)
+            for prob in strategy do
+                wtr.Write(float32 prob)
 
     /// Loads a profile from a file.
     static member Load(path) =
-        let formatter = BinaryFormatter()
         use stream = new FileStream(path, FileMode.Open)
-        formatter.Deserialize(stream)
-            :?> StrategyMap
+        use rdr = new BinaryReader(stream)
+        let nStrategies = rdr.ReadInt32()
+        (Map.empty, seq { 1 .. nStrategies })
+            ||> Seq.fold (fun acc _ ->
+                let key = rdr.ReadString()
+                let strategy =
+                    let nProbs = rdr.ReadByte() |> int
+                    [|
+                        for _ = 1 to nProbs do
+                            rdr.ReadSingle() |> float
+                    |]
+                acc |> Map.add key strategy)
             |> StrategyProfile
 
 and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
