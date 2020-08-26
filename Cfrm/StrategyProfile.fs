@@ -29,16 +29,19 @@ type StrategyProfile(strategyMap : StrategyMap) =
         use stream = new FileStream(path, FileMode.Open)
         use rdr = new BinaryReader(stream)
         let nStrategies = rdr.ReadInt32()
-        (Map.empty, seq { 1 .. nStrategies })
-            ||> Seq.fold (fun acc _ ->
-                let key = rdr.ReadString()
-                let strategy =
-                    let nProbs = rdr.ReadByte() |> int
-                    [|
-                        for _ = 1 to nProbs do
-                            rdr.ReadSingle() |> float
-                    |]
-                acc |> Map.add key strategy)
-            |> StrategyProfile
+        let profile =
+            (Map.empty, seq { 1 .. nStrategies })
+                ||> Seq.fold (fun acc _ ->
+                    let key = rdr.ReadString()
+                    let strategy =
+                        let nProbs = rdr.ReadByte() |> int
+                        [|
+                            for _ = 1 to nProbs do
+                                rdr.ReadSingle() |> float
+                        |]
+                    acc |> Map.add key strategy)
+                |> StrategyProfile
+        assert(stream.Length = stream.Position)
+        profile
 
 and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
