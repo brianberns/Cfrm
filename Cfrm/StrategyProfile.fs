@@ -41,7 +41,8 @@ type StrategyProfile(strategyMap : StrategyMap) =
                         |]
                     acc |> Map.add key strategy)
                 |> StrategyProfile
-        assert(stream.Length = stream.Position)
+        if stream.Length <> stream.Position then
+            failwith "Corrupt strategy profile"
         profile
 
 and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
