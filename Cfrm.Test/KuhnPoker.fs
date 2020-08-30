@@ -68,13 +68,10 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
     do
         Assert.AreEqual(2, cards.Length)
 
-    interface IGameState<Card, Action> with
+    interface IGameState<Action> with
 
         member __.CurrentPlayerIdx =
             currentPlayerIdx
-
-        member __.Infos(iPlayer) =
-            cards.[iPlayer] |> Seq.replicate 1
 
         member __.Key =
             key
@@ -151,7 +148,7 @@ type KuhnPokerTest () =
 
     let play rng (players : StrategyProfile[]) =
         
-        let rec loop (gameState : IGameState<_, _>) =
+        let rec loop (gameState : IGameState<_>) =
             match gameState.TerminalValues with
                 | null ->
                     let iAction =

@@ -23,7 +23,7 @@ namespace Cfrm.Test
         }
 
         class KuhnPokerState
-            : IGameState<Card, Action>
+            : IGameState<Action>
         {
             public KuhnPokerState(Card[] cards)
                 : this(cards, new Action[0])
@@ -85,10 +85,7 @@ namespace Cfrm.Test
             public Action[] LegalActions { get; } =
                 new Action[] { Action.Check, Action.Bet };
 
-            public IEnumerable<Card> Infos(int iPlayer) =>
-                Enumerable.Repeat(_cards[iPlayer], 1);
-
-            public IGameState<Card, Action> AddAction(Action action)
+            public IGameState<Action> AddAction(Action action)
             {
                 var actions = _actions
                     .Concat(Enumerable.Repeat(action, 1))

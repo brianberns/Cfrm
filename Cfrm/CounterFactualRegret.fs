@@ -10,7 +10,7 @@ module CounterFactualRegret =
         (prod probs.[0 .. iPlayer-1]) * (prod probs.[iPlayer+1 ..])
 
     /// Main CFR loop.
-    let rec private loop infoSetMap reachProbs (gameState : IGameState<_, _>) =
+    let rec private loop infoSetMap reachProbs (gameState : IGameState<_>) =
 
         match gameState.TerminalValuesOpt with
 
@@ -114,7 +114,7 @@ type CounterFactualRegret private () =
     /// Runs CFR minimization for the given number of iterations.
     static member Minimize(numIterations, numPlayers, getInitialState) =
         let getInitialStateF =
-            FuncConvert.FromFunc<IGameState<_, _>>(getInitialState)
+            FuncConvert.FromFunc<IGameState<_>>(getInitialState)
         CounterFactualRegret.minimize
             numIterations
             numPlayers
