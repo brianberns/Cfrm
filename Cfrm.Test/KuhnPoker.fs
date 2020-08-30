@@ -149,15 +149,15 @@ type KuhnPokerTest () =
     let play rng (players : StrategyProfile[]) =
         
         let rec loop (gameState : IGameState<_>) =
-            match gameState.TerminalValues with
-                | null ->
+            match gameState.TerminalValuesOpt with
+                | None ->
                     let iAction =
                         players.[gameState.CurrentPlayerIdx].[gameState.Key]
                             |> selectFrom rng
                     gameState.LegalActions.[iAction]
                         |> gameState.AddAction
                         |> loop
-                | values ->
+                | Some values ->
                     Assert.AreEqual(2, values.Length)
                     values.[0], values.[1]
 

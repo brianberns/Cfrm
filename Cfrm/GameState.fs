@@ -21,7 +21,7 @@ type IGameState<'action> =
     end
 
 [<AutoOpen>]
-module private GameStateExt =
+module GameStateExt =
 
     type IGameState<'action> with
 
