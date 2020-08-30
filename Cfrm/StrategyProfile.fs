@@ -5,13 +5,15 @@ open System.IO
 /// Collection of strategies for every information set in a game.
 type StrategyProfile(strategyMap : StrategyMap) =
 
-    /// Key/strategy pairs in this profile.
-    member __.StrategyPairs =
-        strategyMap |> Map.toArray
+    /// Key/strategy map.
+    member __.Map =
+        strategyMap
 
-    /// Answers the strategy with the given key.
-    member __.Item
-        with get(key) = strategyMap.[key]
+    /// Key/strategy dictionary.
+    member __.ToDict() =
+        strategyMap
+            |> Map.toSeq
+            |> dict
 
     /// Saves the profile to a file.
     member __.Save(path) =

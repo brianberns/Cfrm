@@ -108,7 +108,7 @@ type KuhnPokerTest () =
                 createGame rng)
 
         printfn "Expected value: %A" expectedGameValues
-        for (key, strategy) in strategyProfile.StrategyPairs do
+        for (KeyValue(key, strategy)) in strategyProfile.Map do
             printfn "%s: %A" key strategy
 
         let path = "Kuhn.tmp.strategy"
@@ -117,7 +117,7 @@ type KuhnPokerTest () =
 
         // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
         Assert.AreEqual(expectedGameValues.[0], -1.0/18.0, delta)
-        let get key i = strategyProfile.[key].[i]
+        let get key i = strategyProfile.Map.[key].[i]
         let alpha = get "J" 1
         Assert.IsTrue(alpha >= 0.0)
         Assert.IsTrue(alpha <= 1.0/3.0)
@@ -152,7 +152,8 @@ type KuhnPokerTest () =
             match gameState.TerminalValuesOpt with
                 | None ->
                     let iAction =
-                        players.[gameState.CurrentPlayerIdx].[gameState.Key]
+                        let profile = players.[gameState.CurrentPlayerIdx]
+                        profile.Map.[gameState.Key]
                             |> selectFrom rng
                     gameState.LegalActions.[iAction]
                         |> gameState.AddAction
@@ -175,7 +176,8 @@ type KuhnPokerTest () =
 
         let nashProfile = StrategyProfile.Load("Kuhn.strategy")
         let randomProfile =
-            nashProfile.StrategyPairs
+            nashProfile.Map
+                |> Map.toSeq
                 |> Seq.map (fun (key, strategy) ->
                     let uniform =
                         let len = strategy.Length

@@ -126,13 +126,14 @@ namespace Cfrm.Test
             strategyProfile = StrategyProfile.Load(path);
 
             // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
+            var dict = strategyProfile.ToDict();
             Assert.AreEqual(expectedGameValues[0], -1.0 / 18.0, delta);
-            var alpha = strategyProfile["J"][1];
+            var alpha = dict["J"][1];
             Assert.IsTrue(alpha >= 0.0);
             Assert.IsTrue(alpha <= 1.0 / 3.0);
-            Assert.AreEqual(strategyProfile["Q"][0], 1.0, delta);
-            Assert.AreEqual(strategyProfile["Qcb"][1], alpha + 1.0 / 3.0, delta);
-            Assert.AreEqual(strategyProfile["K"][1], 3.0 * alpha, delta);
+            Assert.AreEqual(dict["Q"][0], 1.0, delta);
+            Assert.AreEqual(dict["Qcb"][1], alpha + 1.0 / 3.0, delta);
+            Assert.AreEqual(dict["K"][1], 3.0 * alpha, delta);
         }
     }
 }
