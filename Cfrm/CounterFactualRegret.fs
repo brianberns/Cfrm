@@ -16,13 +16,20 @@ module CounterFactualRegret =
 
                 // game is still in progress
             | None ->
-                let legalActions = gameState.LegalActions
-                match legalActions.Length with
-                    | 0 -> failwith "No legal actions"
-                    | 1 ->   // trivial case
-                        let nextState = gameState.AddAction(legalActions.[0])
-                        loop infoSetMap reachProbs nextState
-                    | _ -> cfrCore infoSetMap reachProbs gameState legalActions
+
+                    // can prune node? (see https://github.com/deepmind/open_spiel/issues/102)
+                if reachProbs |> Vector.forall ((=) 0.0) then
+                    DenseVector.zero reachProbs.Count, infoSetMap
+
+                    // evaluate node
+                else
+                    let legalActions = gameState.LegalActions
+                    match legalActions.Length with
+                        | 0 -> failwith "No legal actions"
+                        | 1 ->   // trivial case
+                            let nextState = gameState.AddAction(legalActions.[0])
+                            loop infoSetMap reachProbs nextState
+                        | _ -> cfrCore infoSetMap reachProbs gameState legalActions
 
                 // game is over
             | Some values ->
