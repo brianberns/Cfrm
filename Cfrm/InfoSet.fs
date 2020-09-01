@@ -3,7 +3,7 @@
 open MathNet.Numerics.LinearAlgebra
 
 /// Per-action probability of taking each legal action in a particular
-/// information set.
+/// information set. Probabilities in each instance should sum to 1.0.
 type private Strategy = Vector<float>
 
 /// Represents the set of nodes in a game-tree that are indistinguishable
@@ -32,15 +32,14 @@ module private InfoSet =
     let private normalize values : Strategy =
         let total = Vector.sum values
         if total > 0.0 then
-            values / total   // normalize
+            values / total               // normalize
         else
-            (1.0 / float values.Count)
-                |> DenseVector.create values.Count   // use uniform strategy instead
+            (1.0 / float values.Count)   // use uniform strategy when regret is negative
+                |> DenseVector.create values.Count
 
     /// Creates a new strategy for the given info set using the given
     /// reach probability.
     let getStrategy (reachProb : float) infoSet =
-
         assert(reachProb >= 0.0 && reachProb <= 1.0)
 
             // compute strategy from current regrets
@@ -49,7 +48,7 @@ module private InfoSet =
                 |> Vector.map (max 0.0)
                 |> normalize
 
-            // accumulate strategy sum
+            // accumulate weighted strategy sum
         let infoSet' =
             { infoSet with
                 StrategySum =

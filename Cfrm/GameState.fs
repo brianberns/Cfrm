@@ -10,7 +10,8 @@ type IGameState<'action> =
         /// Unique key for this game state.
         abstract member Key : string
 
-        /// Per-player payoffs if this is a terminal game state; null otherwise.
+        /// Per-player payoffs if this is a terminal game state;
+        /// null otherwise.
         abstract member TerminalValues : float[]
 
         /// Legal actions available in this game state.
@@ -25,6 +26,7 @@ module GameStateExt =
 
     type IGameState<'action> with
 
-        /// Per-player payoffs if this is a terminal game state; None otherwise.
+        /// Per-player payoffs if this is a terminal game state;
+        /// None otherwise.
         member this.TerminalValuesOpt =
             Option.ofObj this.TerminalValues
