@@ -36,7 +36,7 @@ module CounterFactualRegret =
             infoSetMap
                 |> InfoSetMap.getInfoSet gameState.Key legalActions.Length
 
-            // update info set with current player's strategy
+            // update strategy for this player in this info set
         let iCurPlayer = gameState.CurrentPlayerIdx
         let strategy, infoSet =
             infoSet |> InfoSet.getStrategy reachProbs.[iCurPlayer]
@@ -66,6 +66,7 @@ module CounterFactualRegret =
             // value of current game state is counterfactual values weighted
             // by action probabilities
         let result = strategy * counterFactualValues
+        assert(result.Count = reachProbs.Count)
 
             // accumulate regret
         let infoSet =
