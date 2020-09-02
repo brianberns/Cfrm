@@ -95,9 +95,9 @@ module CounterFactualRegret =
             let initUtils = DenseVector.zero numPlayers
             let iterations = seq { 1 .. numIterations }
             ((initUtils, Map.empty), iterations)
-                ||> Seq.fold (fun (accUtils, accMap) _ ->
+                ||> Seq.fold (fun (accUtils, accMap) iIter ->
                     let utils, accMap =
-                        getInitialState ()
+                        getInitialState iIter
                             |> loop accMap (DenseVector.create numPlayers 1.0)
                     accUtils + utils, accMap)
 
@@ -122,7 +122,7 @@ type CounterFactualRegret private () =
     /// Runs CFR minimization for the given number of iterations.
     static member Minimize(numIterations, numPlayers, getInitialState) =
         let getInitialStateF =
-            FuncConvert.FromFunc<IGameState<_>>(getInitialState)
+            FuncConvert.FromFunc<int, IGameState<_>>(getInitialState)
         CounterFactualRegret.minimize
             numIterations
             numPlayers

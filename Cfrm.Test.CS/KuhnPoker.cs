@@ -115,7 +115,7 @@ namespace Cfrm.Test
             var delta = 0.03;
 
             var (expectedGameValues, strategyProfile) =
-                CounterFactualRegret.Minimize(numIterations, 2, () =>
+                CounterFactualRegret.Minimize(numIterations, 2, i =>
                     {
                         var cards = Shuffle(rng, deck)[0..2];
                         return new KuhnPokerState(cards);

@@ -104,7 +104,7 @@ type KuhnPokerTest () =
 
         let rng = Random(0)
         let expectedGameValues, strategyProfile =
-            CounterFactualRegret.minimize numIterations 2 (fun () ->
+            CounterFactualRegret.minimize numIterations 2 (fun i ->
                 createGame rng)
 
         printfn "Expected value: %A" expectedGameValues
