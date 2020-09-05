@@ -23,7 +23,7 @@ namespace Cfrm.Test
         }
 
         class KuhnPokerState
-            : IGameState<Action>
+            : GameState<Action>
         {
             public KuhnPokerState(Card[] cards)
                 : this(cards, new Action[0])
@@ -51,13 +51,13 @@ namespace Cfrm.Test
                 }
             }
 
-            public int CurrentPlayerIdx =>
+            public override int CurrentPlayerIdx =>
                 _actions.Length % 2;
 
-            public string Key =>
+            public override string Key =>
                 $"{_cards[this.CurrentPlayerIdx].ToString()[0]}{this.ActionString}";
 
-            public double[] TerminalValues
+            public override double[] TerminalValues
             {
                 get
                 {
@@ -82,10 +82,10 @@ namespace Cfrm.Test
                 }
             }
 
-            public Action[] LegalActions { get; } =
+            public override Action[] LegalActions { get; } =
                 new Action[] { Action.Check, Action.Bet };
 
-            public IGameState<Action> AddAction(Action action)
+            public override GameState<Action> AddAction(Action action)
             {
                 var actions = _actions
                     .Concat(Enumerable.Repeat(action, 1))

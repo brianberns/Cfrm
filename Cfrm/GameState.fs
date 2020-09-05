@@ -1,32 +1,33 @@
 ﻿namespace Cfrm
 
 /// Immutable representation of a game state.
-type IGameState<'action> =
-    interface
+[<AbstractClass>]
+type GameState<'action>() =
 
-        /// Current player's 0-based index.
-        abstract member CurrentPlayerIdx : int
+    /// Current player's 0-based index.
+    abstract member CurrentPlayerIdx : int
 
-        /// Unique key for this game state.
-        abstract member Key : string
+    /// Unique key for this game state.
+    abstract member Key : string
 
-        /// Per-player payoffs if this is a terminal game state;
-        /// null otherwise.
-        abstract member TerminalValues : float[]
+    /// Per-player payoffs iff this is a terminal game state;
+    /// None otherwise.
+    abstract member TerminalValuesOpt : Option<float[]>
 
-        /// Legal actions available in this game state.
-        abstract member LegalActions : 'action[]
+    /// Per-player payoffs if this is a terminal game state;
+    /// null otherwise.
+    abstract member TerminalValues : float[]
 
-        /// Moves to the next game state by taking the given action.
-        abstract member AddAction : 'action -> IGameState<'action>
-    end
+    /// Legal actions available in this game state.
+    abstract member LegalActions : 'action[]
 
-[<AutoOpen>]
-module GameStateExt =
+    /// Moves to the next game state by taking the given action.
+    abstract member AddAction : 'action -> GameState<'action>
 
-    type IGameState<'action> with
+    /// Default implementation.
+    default this.TerminalValues =
+        this.TerminalValuesOpt |> Option.toObj
 
-        /// Per-player payoffs if this is a terminal game state;
-        /// None otherwise.
-        member this.TerminalValuesOpt =
-            Option.ofObj this.TerminalValues
+    /// Default implementation.
+    default this.TerminalValuesOpt =
+        this.TerminalValues |> Option.ofObj

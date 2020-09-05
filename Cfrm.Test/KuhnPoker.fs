@@ -30,6 +30,7 @@ type Action =
     | Bet = 1
 
 type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
+    inherit GameState<Action>()
 
     let currentPlayerIdx =
         actions.Length % 2
@@ -45,22 +46,22 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
             cards.[currentPlayerIdx].ToString().[0]
         sprintf "%c%s" cardChar actionString
 
-    let terminalValues =
+    let terminalValuesOpt =
         match actionString with
             | "cbc" ->   // player 1 wins ante only
-                [| -1.0; 1.0 |]
+                Some [| -1.0; 1.0 |]
             | "bc" ->    // player 0 wins ante only
-                [| 1.0; -1.0 |]
+                Some [| 1.0; -1.0 |]
             | "cc" ->    // no bets: high card wins ante only
                 let sign = compare cards.[0] cards.[1] |> float
-                [| sign * 1.0; sign * -1.0 |]
+                Some [| sign * 1.0; sign * -1.0 |]
             | "cbb" ->   // two bets: high card wins ante and bet
                 let sign = compare cards.[1] cards.[0] |> float
-                [| sign * -2.0; sign * 2.0 |]
+                Some [| sign * -2.0; sign * 2.0 |]
             | "bb" ->    // two bets: high card wins ante and bet
                 let sign = compare cards.[0] cards.[1] |> float
-                [| sign * 2.0; sign * -2.0 |]
-            | _ -> null
+                Some [| sign * 2.0; sign * -2.0 |]
+            | _ -> None
 
     let legalActions =
         [| Action.Check; Action.Bet |]
@@ -68,24 +69,22 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
     do
         Assert.AreEqual(2, cards.Length)
 
-    interface IGameState<Action> with
+    override __.CurrentPlayerIdx =
+        currentPlayerIdx
 
-        member __.CurrentPlayerIdx =
-            currentPlayerIdx
+    override __.Key =
+        key
 
-        member __.Key =
-            key
+    override __.TerminalValuesOpt =
+        terminalValuesOpt
 
-        member __.TerminalValues =
-            terminalValues
+    override __.LegalActions =
+        legalActions
 
-        member __.LegalActions =
-            legalActions
-
-        member __.AddAction(action) =
-            let actions' =
-                [| yield! actions; yield action |]
-            KuhnPokerState(cards, actions') :> _
+    override __.AddAction(action) =
+        let actions' =
+            [| yield! actions; yield action |]
+        KuhnPokerState(cards, actions') :> _
 
     static member Create(cards) =
         KuhnPokerState(cards, Array.empty)
@@ -148,7 +147,7 @@ type KuhnPokerTest () =
 
     let play rng (players : StrategyProfile[]) =
         
-        let rec loop (gameState : IGameState<_>) =
+        let rec loop (gameState : GameState<_>) =
             match gameState.TerminalValuesOpt with
                 | None ->
                     let iAction =
