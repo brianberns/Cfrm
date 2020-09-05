@@ -29,11 +29,11 @@ The `Minimize` function returns a tuple containing two values:
 * `float[] expectedGameValue`: An array containing the expected payoffs for each player at the Nash equilibrium. If the game is zero-sum, these payoffs will sum to zero.
 * `StrategyProfile strategyProfile`: A collection of strategies for the game states visited while running CFR. To access these strategies from C#, use the `IDictionary<string, float[]> ToDict` member. The keys of this dictionary correspond to `GameState.Key`, while the values are arrays representing the probability of taking each of the `GameState.LegalActions` at that game state. This profile can be used to play the game according to the strategy found by CFR.
 
-References:
+## References
 * [Vanilla Counterfactual Regret Minimization for Engineers](https://justinsermeno.com/posts/cfr/): Walkthrough of a Python implementation of 2-player CFR
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMjAxMDc3MDAxMiwxOTkwNzMzMzI3LDEwND
-A3MTg3MTNdfQ==
+eyJoaXN0b3J5IjpbLTE3MjM0OTQ3NzgsMjAxMDc3MDAxMiwxOT
+kwNzMzMzI3LDEwNDA3MTg3MTNdfQ==
 -->
