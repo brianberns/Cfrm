@@ -11,11 +11,11 @@ type GameState<'action>() =
     abstract member Key : string
 
     /// Per-player payoffs iff this is a terminal game state;
-    /// None otherwise.
+    /// None otherwise. F# subclasses should override this.
     abstract member TerminalValuesOpt : Option<float[]>
 
     /// Per-player payoffs if this is a terminal game state;
-    /// null otherwise.
+    /// null otherwise. C# subclasses should override this.
     abstract member TerminalValues : float[]
 
     /// Legal actions available in this game state.
