@@ -1,6 +1,6 @@
 # Counterfactual Regret Minimization
 
-Counterfactual Regret Minimization (usually abbreviated as "CFR") is a technique for solving imperfect-information games. "Imperfect information" means players have different information about the game. For example, in most card games, players are dealt cards that they keep hidden from the other players. Solving such a game means finding a Nash equilibrium, which is a strategy that cannot be improved further by incremental changes.
+[Counterfactual Regret Minimization](https://www.quora.com/What-is-an-intuitive-explanation-of-counterfactual-regret-minimization) (usually abbreviated as "CFR") is a technique for solving imperfect-information games. "Imperfect information" means players have different information about the game. For example, in most card games, players are dealt cards that they keep hidden from the other players. Solving such a game means finding a Nash equilibrium, which is a strategy that cannot be improved further by incremental changes.
 
 Cfrm is a .NET framework for applying CFR to a game of two or more players. To solve such a game, you define a concrete class that inherits from an abstract base class called `GameState<TAction>` that defines the behavior of the game. The type parameter `TAction` describes the type of actions available in the game (e.g. playing a card, making a bet, etc.).
 
@@ -14,12 +14,12 @@ If the game is not in a terminal state, this member answers an array of legal ac
 * `GameState<TAction> AddAction(TAction action)`
 This method advances the game to the next state by taking the given action on behalf of the current player.
 * `string Key`
-This member answers a key that uniquely describes the state of the game from the point of view of the current player. For example, in a card game, the unique key might be a string that describes all the cards played so far (by all players) plus the cards remaining in the current player's hand.
+This member answers a key that uniquely describes the state of the game from the point of view of the current player. For example, in a card game, the unique key might be a string that describes the history of the game to this point (i.e. all the cards played so far, by all players) plus the hidden cards remaining in the current player's hand.
 
 References:
 * [Vanilla Counterfactual Regret Minimization for Engineers](https://justinsermeno.com/posts/cfr/): Walkthrough of a Python implementation of 2-player CFR
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEwMzg2OTIxNjcsMTA0MDcxODcxM119
+eyJoaXN0b3J5IjpbLTc2NjEzNDczNSwxMDQwNzE4NzEzXX0=
 -->
