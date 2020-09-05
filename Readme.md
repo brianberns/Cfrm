@@ -9,9 +9,9 @@ The methods of `GameState` that you must override are:
 * `int CurrentPlayerIdx`
 This is the 0-based index of the current player. For example, if there are four players in a game, their indexes are `0`, `1`, `2`, and `3`. Players do not necessarily play in that order, though. (E.g. In trick-taking games, the player who takes a trick typically leads on the next trick.)
 * `float[] TerminalValues`
-If the game is in a terminal state (i.e. the game is over), this member answers an array of "payoff" values for each player. For example, in a two-player game, if player 0 wins, she might receive 1 point, while player 1 would receive -1 point for losing, resulting in a payoff array of `[ 1, -1]` for that outcome. If the sum of the payoffs in all terminal states is 0, then the game is "zero-sum". If the game is not over, then this member answers `null`.
+If the game is in a terminal state (i.e. the game is over), this member answers an array of "payoff" values for each player. For example, in a two-player game, if player 0 wins, she might receive 1 point, while player 1 would receive -1 point for losing, resulting in a payoff array of `[ 1, -1]` for that outcome. If the sum of the payoffs in a terminal state is always 0, then the game is "zero-sum". If the game is not over, then this member answers `null`.
 * `TAction[] LegalActions`
-If the game is not in a terminal state, this member answers an array of legal actions for the player whose turn it is in the current state. For example, in a poker game, these actions might be `Bet` or `Fold`.
+If the game is not in a terminal state, this member answers an array of legal actions for the player whose turn it is in the current state. For example, in a poker game, these actions might be `Bet` or `Fold`, while in Bridge, the actions would
 * `GameState<TAction> AddAction(TAction action)`
 This method advances the game to the next state by taking the given action on behalf of the current player.
 * `string Key`
@@ -22,6 +22,6 @@ References:
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTEwODk5NzU4MjYsMTk5MDczMzMyNywxMD
-QwNzE4NzEzXX0=
+eyJoaXN0b3J5IjpbMTkwNDMwNTc2MCwxOTkwNzMzMzI3LDEwND
+A3MTg3MTNdfQ==
 -->
