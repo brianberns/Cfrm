@@ -2,6 +2,40 @@
 
 open MathNet.Numerics.LinearAlgebra
 
+type CfrBatch<'gameState, 'action when 'gameState :> GameState<'action>> =
+    {
+        /// Per-player utilities.
+        Utilities : Vector<float>
+
+        /// Information sets.
+        InfoSetMap : InfoSetMap
+
+        /// Number of iterations run so far.
+        NumIterations : int
+
+        /// Callback to start a new game.
+        GetInitialState : int (*iteration #*) -> 'gameState
+
+        /// Strategy profile.
+        StrategyProfile : StrategyProfile
+
+        /// Per-player expected game values.
+        ExpectedGameValues : Vector<float>
+    }
+
+module CfrBatch =
+
+    /// Initializes batch input.
+    let create numPlayers getInitialState =
+        {
+            Utilities = DenseVector.zero numPlayers
+            InfoSetMap = Map.empty
+            NumIterations = 0
+            GetInitialState = getInitialState
+            StrategyProfile = StrategyProfile(Map.empty)
+            ExpectedGameValues = DenseVector.zero numPlayers
+        }
+
 module CounterFactualRegret =
 
     /// Computes counterfactual reach probability.
@@ -87,33 +121,46 @@ module CounterFactualRegret =
         let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
         result, infoSetMap
 
-    /// Runs CFR minimization for the given number of iterations.
-    let minimize numIterations numPlayers getInitialState =
+    /// Runs a CFR minimization batch.
+    let minimizeBatch numIterations batch =
 
             // accumulate utilties
+        let numPlayers = batch.Utilities.Count
         let utilities, infoSetMap =
-            let initUtils = DenseVector.zero numPlayers
             let iterations = seq { 1 .. numIterations }
-            ((initUtils, Map.empty), iterations)
-                ||> Seq.fold (fun (accUtils, accMap) iIter ->
+            ((batch.Utilities, batch.InfoSetMap), iterations)
+                ||> Seq.fold (fun (accUtils, accMap) iterNum ->
                     let utils, accMap =
-                        getInitialState iIter
+                        batch.GetInitialState(iterNum)
                             |> loop accMap (DenseVector.create numPlayers 1.0)
                     accUtils + utils, accMap)
 
-            // compute expected game values and equilibrium strategies
-        let expectedGameValues = utilities / (float) numIterations
-        let strategyProfile =
-            infoSetMap
-                |> Map.map (fun _ infoSet ->
-                    let strategy =
-                        infoSet
-                            |> InfoSet.getAverageStrategy
-                            |> Vector.toArray
-                    assert(strategy.Length > 1)
-                    strategy)
-                |> StrategyProfile
-        expectedGameValues.ToArray(), strategyProfile
+            // compute equilibrium strategies and expected game values
+        let numIterations = batch.NumIterations + numIterations
+        {
+            batch with
+                Utilities = utilities
+                InfoSetMap = infoSetMap
+                NumIterations = numIterations
+                StrategyProfile =
+                    infoSetMap
+                        |> Map.map (fun _ infoSet ->
+                            let strategy =
+                                infoSet
+                                    |> InfoSet.getAverageStrategy
+                                    |> Vector.toArray
+                            assert(strategy.Length > 1)
+                            strategy)
+                        |> StrategyProfile
+                ExpectedGameValues = utilities / float numIterations
+        }
+
+    /// Runs CFR minimization for the given number of iterations.
+    let minimize numIterations numPlayers getInitialState =
+        let batch =
+            CfrBatch.create numPlayers getInitialState
+                |> minimizeBatch numIterations   // run a single batch
+        batch.ExpectedGameValues.ToArray(), batch.StrategyProfile
 
 /// C# support.
 [<AbstractClass; Sealed>]

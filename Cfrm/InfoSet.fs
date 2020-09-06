@@ -4,11 +4,11 @@ open MathNet.Numerics.LinearAlgebra
 
 /// Per-action probability of taking each legal action in a particular
 /// information set. Probabilities in each instance should sum to 1.0.
-type private Strategy = Vector<float>
+type Strategy = Vector<float>
 
 /// Represents the set of nodes in a game-tree that are indistinguishable
 /// for a given player.
-type private InfoSet =
+type InfoSet =
     {
         /// Per-action sum of all regrets computed so far. Positive regret
         /// indicates that we would rather have taken a different action.
@@ -19,7 +19,7 @@ type private InfoSet =
         StrategySum : Vector<float>
     }
 
-module private InfoSet =
+module InfoSet =
 
     /// Creates a new info set with the given number of legal actions.
     let create numActions =
@@ -72,9 +72,9 @@ module private InfoSet =
 
 /// Maps keys (which typically represent game histories) to
 /// known info sets.
-type private InfoSetMap = Map<string (*InfoSet.Key*), InfoSet>
+type InfoSetMap = Map<string (*InfoSet.Key*), InfoSet>
 
-module private InfoSetMap =
+module InfoSetMap =
 
     /// Obtains an info set for the given key, creating one if
     /// it doesn't already exist.

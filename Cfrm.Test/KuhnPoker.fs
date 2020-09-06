@@ -99,23 +99,31 @@ type KuhnPokerTest () =
             |> Array.take 2
             |> KuhnPokerState.Create
 
-    let minimize numIterations delta =
+    let minimize batchSize numBatches delta =
 
         let rng = Random(0)
-        let expectedGameValues, strategyProfile =
-            CounterFactualRegret.minimize numIterations 2 (fun i ->
+        let batchNums = seq { 1 .. numBatches }
+        let initialBatch =
+            CfrBatch.create 2 (fun _ ->
                 createGame rng)
+        let finalBatch =
+            (initialBatch, batchNums)
+                ||> Seq.fold (fun inBatch _ ->
+                    let outBatch =
+                        inBatch
+                            |> CounterFactualRegret.minimizeBatch batchSize
+                    printfn "Expected value: %A" outBatch.ExpectedGameValues
+                    outBatch)
 
-        printfn "Expected value: %A" expectedGameValues
-        for (KeyValue(key, strategy)) in strategyProfile.Map do
+        for (KeyValue(key, strategy)) in finalBatch.StrategyProfile.Map do
             printfn "%s: %A" key strategy
 
         let path = "Kuhn.tmp.strategy"
-        strategyProfile.Save(path)
+        finalBatch.StrategyProfile.Save(path)
         let strategyProfile = StrategyProfile.Load(path)
 
         // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
-        Assert.AreEqual(expectedGameValues.[0], -1.0/18.0, delta)
+        Assert.AreEqual(finalBatch.ExpectedGameValues.[0], -1.0/18.0, delta)
         let get key i = strategyProfile.Map.[key].[i]
         let alpha = get "J" 1
         Assert.IsTrue(alpha >= 0.0)
@@ -142,12 +150,12 @@ type KuhnPokerTest () =
 
         loop (createGame rng)
 
-    member __.Minimize(numIterations, delta) =
-        minimize numIterations delta
+    member __.Minimize(batchSize, numBatches, delta) =
+        minimize batchSize numBatches delta
 
     [<TestMethod>]
     member this.Solve() =
-        this.Minimize(100000, 0.03)
+        this.Minimize(10000, 10, 0.03)
 
     [<TestMethod>]
     member __.Play() =
