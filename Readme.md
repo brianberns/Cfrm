@@ -33,7 +33,8 @@ The `Minimize` function returns a tuple containing two values:
 After minimizing regret, the resulting strategy profile can be saved to disk via its `Save` method. In order to play a game with a saved profile, first load it from disk using the static `StrategyProfile.Load` method. To play a mixed strategy (e.g. in poker), call the `Sample` method with a key that corresponds to the state of the game from the current player's point of view. To play a pure strategy, call the `Best` method, which always chooses the action with the highest probability in a given situation.
 
 ## F# support
-Cfrm is written in F# and supports F# clients
+Cfrm is written in F# and supports F# implementations smoothly. The important differences from working in C# are:
+* When inheriting from `GameState` , you can override `TerminalValuesOpt` instead of `TerminalValues` in order to avoid returning n
 
 ## Example
 
@@ -43,7 +44,7 @@ Cfrm is written in F# and supports F# clients
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNDQ2ODI0NjEyLC00MzI4MjA1NTQsLTE3Mj
-M0OTQ3NzgsMjAxMDc3MDAxMiwxOTkwNzMzMzI3LDEwNDA3MTg3
-MTNdfQ==
+eyJoaXN0b3J5IjpbMjEwNDQyNTg2NSwtNDMyODIwNTU0LC0xNz
+IzNDk0Nzc4LDIwMTA3NzAwMTIsMTk5MDczMzMyNywxMDQwNzE4
+NzEzXX0=
 -->
