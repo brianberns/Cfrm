@@ -30,7 +30,7 @@ The `Minimize` function returns a tuple containing two values:
 * `StrategyProfile strategyProfile`: A collection of strategies for the game states visited while running CFR. To access these strategies from C#, use the `IDictionary<string, float[]> ToDict` member. The keys of this dictionary correspond to `GameState.Key`, while the values are arrays representing the probability of taking each of the `GameState.LegalActions` at that game state. This profile can be used to play the game according to the strategy found by CFR.
 
 ## Playing a game
-A trained strategy profi
+After minimizing regret, the resulting strategy profile can be saved to disk via its `Save` method. In order to play a game with a saved profile, first load it from disk using the static StrategyProfile.Load method.
 
 ## Example
 
@@ -41,7 +41,7 @@ A trained strategy profi
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTM2MTA1OTUxNywtNDMyODIwNTU0LC0xNz
+eyJoaXN0b3J5IjpbLTk0ODkwNzg1OCwtNDMyODIwNTU0LC0xNz
 IzNDk0Nzc4LDIwMTA3NzAwMTIsMTk5MDczMzMyNywxMDQwNzE4
 NzEzXX0=
 -->
