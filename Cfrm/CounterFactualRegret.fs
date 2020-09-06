@@ -2,6 +2,8 @@
 
 open MathNet.Numerics.LinearAlgebra
 
+/// Represents the information accumulated during a batch of
+/// iterations.
 type CfrBatch<'gameState, 'action when 'gameState :> GameState<'action>> =
     {
         /// Per-player utilities.
@@ -10,7 +12,7 @@ type CfrBatch<'gameState, 'action when 'gameState :> GameState<'action>> =
         /// Information sets.
         InfoSetMap : InfoSetMap
 
-        /// Number of iterations run so far.
+        /// Total number of iterations run so far.
         NumIterations : int
 
         /// Callback to start a new game.
