@@ -38,14 +38,14 @@ Cfrm is written in F# and supports F# implementations smoothly. The important di
 * You can call function `CounterFactualRegret.minimize` instead of method `CounterFactualRegret.Minimize`. This allows you to pass in an F# closure for the `getInitialState` callback instead of the wrapped `Func` that is passed to `Minimize`.
 
 ## Example
-
+There are working examples of [Kuhn poker](https://en.wikipedia.org/wiki/Kuhn_poker) for both C# and F# in the unit test projects.
 
 ## References
 * [Vanilla Counterfactual Regret Minimization for Engineers](https://justinsermeno.com/posts/cfr/): Walkthrough of a Python implementation of 2-player CFR
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMzk4MDgwNzQ1LC00MzI4MjA1NTQsLTE3Mj
-M0OTQ3NzgsMjAxMDc3MDAxMiwxOTkwNzMzMzI3LDEwNDA3MTg3
-MTNdfQ==
+eyJoaXN0b3J5IjpbODE5Nzk3MjY5LDM5ODA4MDc0NSwtNDMyOD
+IwNTU0LC0xNzIzNDk0Nzc4LDIwMTA3NzAwMTIsMTk5MDczMzMy
+NywxMDQwNzE4NzEzXX0=
 -->
