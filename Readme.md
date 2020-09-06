@@ -5,7 +5,7 @@
 ## Representing game state
 Cfrm is a .NET library for applying CFR to a game of two or more players. To solve such a game, you create a concrete class that inherits from an abstract base class called `GameState<TAction>` that defines the state of the game from the current player's point of view (this state is known as an "information set" in game theory). The type parameter `TAction` defines the type of actions available in the game (e.g. playing a card, making a bet, etc.). This can be an `enum` or any other type (such as a `Card` class).
 
-The methods of `GameState` that you must override are:
+If you are working in C#, the methods of `GameState` that you must override are:
 * `int CurrentPlayerIdx`
 This is the 0-based index of the current player. For example, if there are four players in a game, their indexes are `0`, `1`, `2`, and `3`. Players do not necessarily play in that order, though. (E.g. In trick-taking games, the player who takes a trick typically leads on the next trick.)
 * `float[] TerminalValues`
@@ -29,11 +29,15 @@ The `Minimize` function returns a tuple containing two values:
 * `float[] expectedGameValue`: An array containing the expected payoffs for each player at the Nash equilibrium. If the game is zero-sum, these payoffs will sum to zero.
 * `StrategyProfile strategyProfile`: A collection of strategies for the game states visited while running CFR. To access these strategies from C#, use the `IDictionary<string, float[]> ToDict` member. The keys of this dictionary correspond to `GameState.Key`, while the values are arrays representing the probability of taking each of the `GameState.LegalActions` at that game state. This profile can be used to play the game according to the strategy found by CFR.
 
+## Example
+
+## F# support
+
 ## References
 * [Vanilla Counterfactual Regret Minimization for Engineers](https://justinsermeno.com/posts/cfr/): Walkthrough of a Python implementation of 2-player CFR
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE3MjM0OTQ3NzgsMjAxMDc3MDAxMiwxOT
-kwNzMzMzI3LDEwNDA3MTg3MTNdfQ==
+eyJoaXN0b3J5IjpbLTQzMjgyMDU1NCwtMTcyMzQ5NDc3OCwyMD
+EwNzcwMDEyLDE5OTA3MzMzMjcsMTA0MDcxODcxM119
 -->
