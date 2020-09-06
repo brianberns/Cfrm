@@ -35,7 +35,7 @@ After minimizing regret, the resulting strategy profile can be saved to disk via
 ## F# support
 Cfrm is written in F# and supports F# implementations smoothly. The important differences from working in C# are:
 * When inheriting from `GameState` , you can override `TerminalValuesOpt` instead of `TerminalValues` in order to avoid returning `null`.
-* You can call function `CounterFactualRegret.minimize` instead of method `CounterFactualRegret.Minimize`. This allows you to pass in an F# closure
+* You can call function `CounterFactualRegret.minimize` instead of method `CounterFactualRegret.Minimize`. This allows you to pass in an F# closure for the `getInitialState` callback instead of the wrapped `Func` that is passed to `Minimize`.
 
 ## Example
 
@@ -45,7 +45,7 @@ Cfrm is written in F# and supports F# implementations smoothly. The important di
 * [An Introduction to Counterfactual Regret Minimization](http://modelai.gettysburg.edu/2013/cfr/): Detailed overview of CFR with a Java implementation
 * [Multiplayer CFR](https://medium.com/ai-in-plain-english/building-a-poker-ai-part-7-exploitability-multiplayer-cfr-and-3-player-kuhn-poker-25f313bf83cf): Multiplayer support [in Python](https://github.com/tt293/medium-poker-ai/blob/master/part_7/multiplayer_kuhn_poker_cfr.py).
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE4NzQ4ODUxODIsLTQzMjgyMDU1NCwtMT
-cyMzQ5NDc3OCwyMDEwNzcwMDEyLDE5OTA3MzMzMjcsMTA0MDcx
-ODcxM119
+eyJoaXN0b3J5IjpbMzk4MDgwNzQ1LC00MzI4MjA1NTQsLTE3Mj
+M0OTQ3NzgsMjAxMDc3MDAxMiwxOTkwNzMzMzI3LDEwNDA3MTg3
+MTNdfQ==
 -->
