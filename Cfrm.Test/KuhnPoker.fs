@@ -124,27 +124,6 @@ type KuhnPokerTest () =
         Assert.AreEqual(get "Qcb" 1, alpha + 1.0/3.0, delta)
         Assert.AreEqual(get "K" 1, 3.0 * alpha, delta)
 
-    /// Selects the index of an item from the given probability distribution.
-    /// E.g. [.25; .25; .5] will select index 2 half the time.
-    let selectFrom (rng : Random) probs =
-        Assert.IsFalse(probs |> Array.isEmpty)
-        Assert.IsTrue(probs |> Array.forall (fun prob -> prob >= 0.0 && prob <= 1.0))
-
-            // skip the last value, assuming it is 1.0 - sum of previous values
-        let sums =
-            [|
-                yield! (0.0, probs.[0..probs.Length-2])
-                    ||> Seq.scan (+)
-                    |> Seq.skip 1
-                yield 1.0
-            |]
-        assert(sums.Length = probs.Length)
-
-        let r = rng.NextDouble()
-        let i = sums |> Array.findIndex (fun prob -> prob >= r)
-        assert(i < probs.Length)
-        i
-
     let play rng (players : StrategyProfile[]) =
         
         let rec loop (gameState : GameState<_>) =
@@ -152,8 +131,8 @@ type KuhnPokerTest () =
                 | None ->
                     let iAction =
                         let profile = players.[gameState.CurrentPlayerIdx]
-                        profile.Map.[gameState.Key]
-                            |> selectFrom rng
+                        profile.Sample(gameState.Key, rng)
+                            |> Option.get
                     gameState.LegalActions.[iAction]
                         |> gameState.AddAction
                         |> loop
@@ -193,4 +172,5 @@ type KuhnPokerTest () =
             Array.init numIterations (fun _ ->
                 profiles |> play rng |> fst)
                 |> Array.sum
-        Assert.IsTrue(payoff0 / float numIterations > 0.15)
+        let winRate = payoff0 / float numIterations
+        Assert.IsTrue(winRate > 0.15, winRate.ToString())

@@ -1,15 +1,37 @@
 ﻿namespace Cfrm
 
+open MathNet.Numerics.Distributions
 open System.IO
 
 /// Collection of strategies for every information set in a game.
 type StrategyProfile(strategyMap : StrategyMap) =
 
-    /// Key/strategy map.
+    /// Samples an action for the game state with the given
+    /// key. Answers the index of the sampled action, or None
+    /// if the key isn't present in the profile.
+    member __.Sample(key, rng) =
+        strategyMap
+            |> Map.tryFind key
+            |> Option.map (fun strategy ->
+                Categorical.Sample(rng, strategy))
+
+    /// Chooses the action with the highest probability in the
+    /// given game state. Answers the index of the chosen action,
+    /// or None if the key isn't present in the profile.
+    member __.Best(key) =
+        strategyMap
+            |> Map.tryFind key
+            |> Option.map (fun strategy ->
+                strategy
+                    |> Seq.indexed
+                    |> Seq.maxBy snd
+                    |> fst)
+
+    /// Full key/strategy map.
     member __.Map =
         strategyMap
 
-    /// Key/strategy dictionary.
+    /// Full key/strategy dictionary.
     member __.ToDict() =
         strategyMap
             |> Map.toSeq
