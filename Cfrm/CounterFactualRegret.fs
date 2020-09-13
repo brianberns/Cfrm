@@ -75,9 +75,10 @@ module CounterFactualRegret =
     and private cfrCore infoSetMap (reachProbs : Vector<_>) gameState legalActions =
 
             // obtain info set for this game state
+        let key = gameState.Key
         let infoSet, infoSetMap =
             infoSetMap
-                |> InfoSetMap.getInfoSet gameState.Key legalActions.Length
+                |> InfoSetMap.getInfoSet key legalActions.Length
 
             // update strategy for this player in this info set
         let iCurPlayer = gameState.CurrentPlayerIdx
@@ -120,7 +121,7 @@ module CounterFactualRegret =
                     (counterFactualValues.[0.., iCurPlayer] - result.[iCurPlayer])
             infoSet |> InfoSet.accumulateRegret regrets
 
-        let infoSetMap = infoSetMap |> Map.add gameState.Key infoSet
+        let infoSetMap = infoSetMap |> Map.add key infoSet
         result, infoSetMap
 
     /// Runs a CFR minimization batch.
