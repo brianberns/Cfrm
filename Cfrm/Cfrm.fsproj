@@ -10,6 +10,7 @@
     <PackageIcon>Icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/brianberns/Cfrm</RepositoryUrl>
     <Version>2.1.0</Version>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
