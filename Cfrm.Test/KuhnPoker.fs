@@ -25,12 +25,12 @@ type Card =
     | Queen = 12
     | King = 13
 
-type Action =
+type PokerAction =
     | Check = 0
     | Bet = 1
 
-type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
-    inherit GameState<Action>()
+type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
+    inherit GameState<PokerAction>()
 
     let currentPlayerIdx =
         actions.Length % 2
@@ -64,7 +64,7 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : Action[]) =
             | _ -> None
 
     let legalActions =
-        [| Action.Check; Action.Bet |]
+        [| PokerAction.Check; PokerAction.Bet |]
 
     do
         Assert.AreEqual(2, cards.Length)
