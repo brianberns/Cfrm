@@ -29,7 +29,7 @@ type CoordinationGame(upDownOpt : Option<UpDownAction>, leftRightOpt : Option<Le
     override __.TerminalValuesOpt =
         match upDownOpt, leftRightOpt with
             | Some Up, Some Left
-            | Some Down, Some Right -> Some [| 2.0; 4.0|]
+            | Some Down, Some Right -> Some [| 2.0; 4.0 |]
             | Some Up, Some Right
             | Some Down, Some Left -> Some [| 1.0; 3.0 |]
             | _, None -> None
@@ -57,5 +57,11 @@ type CoordinationGameTest () =
         let numIterations = 10000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 (fun _ -> CoordinationGame.Initial)
-        printfn "%A" expectedGameValues
-        printfn "%A" strategyProfile.Map
+
+        let delta = 0.001
+        Assert.AreEqual(2.0, expectedGameValues[0], delta)
+        Assert.AreEqual(4.0, expectedGameValues[1], delta)
+
+        let map = strategyProfile.Map
+        Assert.AreEqual(2, map.Count)
+        Assert.AreEqual(Seq.toList map["0"], Seq.toList map["1"])
