@@ -9,7 +9,7 @@
     <PackageLicenseFile>License</PackageLicenseFile>
     <PackageIcon>Icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/brianberns/Cfrm</RepositoryUrl>
-    <Version>2.1.0</Version>
+    <Version>2.2.0</Version>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
