@@ -1,7 +1,7 @@
 ﻿namespace Cfrm
 
-open MathNet.Numerics.Distributions
 open System.IO
+open MathNet.Numerics.Distributions
 
 /// Collection of strategies for every information set in a game.
 type StrategyProfile(strategyMap : StrategyMap) =
