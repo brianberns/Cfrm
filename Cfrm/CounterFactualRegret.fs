@@ -39,6 +39,71 @@ module CfrBatch =
             StrategyProfile = StrategyProfile(Map.empty)
         }
 
+    /// Saves a vector.
+    let private saveVector (vector : Vector<float>) (wtr : BinaryWriter) =
+        wtr.Write(uint8 vector.Count)
+        for value in vector do
+            wtr.Write(value)
+
+    /// Saves the given batch to a file.
+    let save path batch =
+
+        use stream = new FileStream(path, FileMode.Create)
+        use wtr = new BinaryWriter(stream)
+
+            // expected game values
+        wtr |> saveVector batch.Utilities
+        wtr.Write(batch.NumIterations)
+
+            // info set map
+        wtr.Write(batch.InfoSetMap.Count)
+        for (KeyValue(key, infoSet)) in batch.InfoSetMap do
+            wtr.Write(key)
+            wtr |> saveVector infoSet.RegretSum
+            wtr |> saveVector infoSet.StrategySum
+
+    /// Loads a vector
+    let private loadVector (rdr : BinaryReader) =
+        let n = rdr.ReadByte() |> int
+        [|
+            for _ = 1 to n do
+                rdr.ReadDouble()
+        |] |> DenseVector.ofArray
+
+    /// Loads a batch from a file.
+    let load getInitialState path =
+
+        use stream = new FileStream(path, FileMode.Open)
+        use rdr = new BinaryReader(stream)
+
+            // expected game values
+        let utilities = loadVector rdr
+        let numIterations = rdr.ReadInt32()
+
+            // info set map
+        let infoSetMap =
+            let nInfoSets = rdr.ReadInt32()
+            (Map.empty, seq { 1 .. nInfoSets })
+                ||> Seq.fold (fun acc _ ->
+                    let key = rdr.ReadString()
+                    let infoSet =
+                        {
+                            RegretSum = loadVector rdr
+                            StrategySum = loadVector rdr
+                        }
+                    acc |> Map.add key infoSet)
+
+        if stream.Length <> stream.Position then
+            failwith "Corrupt batch"
+        {
+            GetInitialState = getInitialState
+            Utilities = utilities
+            NumIterations = numIterations
+            InfoSetMap = infoSetMap
+            StrategyProfile =
+                InfoSetMap.toStrategyProfile infoSetMap
+        }
+
 module CounterFactualRegret =
 
     /// Computes counterfactual reach probability.
@@ -156,71 +221,6 @@ module CounterFactualRegret =
             CfrBatch.create numPlayers getInitialState
                 |> minimizeBatch numIterations   // run a single batch
         batch.ExpectedGameValues.ToArray(), batch.StrategyProfile
-
-    /// Saves a vector.
-    let private saveVector (vector : Vector<float>) (wtr : BinaryWriter) =
-        wtr.Write(uint8 vector.Count)
-        for value in vector do
-            wtr.Write(value)
-
-    /// Saves the given batch to a file.
-    let save path batch =
-
-        use stream = new FileStream(path, FileMode.Create)
-        use wtr = new BinaryWriter(stream)
-
-            // expected game values
-        wtr |> saveVector batch.Utilities
-        wtr.Write(batch.NumIterations)
-
-            // info set map
-        wtr.Write(batch.InfoSetMap.Count)
-        for (KeyValue(key, infoSet)) in batch.InfoSetMap do
-            wtr.Write(key)
-            wtr |> saveVector infoSet.RegretSum
-            wtr |> saveVector infoSet.StrategySum
-
-    /// Loads a vector
-    let private loadVector (rdr : BinaryReader) =
-        let n = rdr.ReadByte() |> int
-        [|
-            for _ = 1 to n do
-                rdr.ReadDouble()
-        |] |> DenseVector.ofArray
-
-    /// Loads a batch from a file.
-    let load getInitialState path =
-
-        use stream = new FileStream(path, FileMode.Open)
-        use rdr = new BinaryReader(stream)
-
-            // expected game values
-        let utilities = loadVector rdr
-        let numIterations = rdr.ReadInt32()
-
-            // info set map
-        let infoSetMap =
-            let nInfoSets = rdr.ReadInt32()
-            (Map.empty, seq { 1 .. nInfoSets })
-                ||> Seq.fold (fun acc _ ->
-                    let key = rdr.ReadString()
-                    let infoSet =
-                        {
-                            RegretSum = loadVector rdr
-                            StrategySum = loadVector rdr
-                        }
-                    acc |> Map.add key infoSet)
-
-        if stream.Length <> stream.Position then
-            failwith "Corrupt batch"
-        {
-            GetInitialState = getInitialState
-            Utilities = utilities
-            NumIterations = numIterations
-            InfoSetMap = infoSetMap
-            StrategyProfile =
-                InfoSetMap.toStrategyProfile infoSetMap
-        }
 
 /// C# support.
 [<AbstractClass; Sealed>]

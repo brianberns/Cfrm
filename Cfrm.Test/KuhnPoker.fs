@@ -132,6 +132,13 @@ type KuhnPokerTest () =
         Assert.AreEqual(get "Qcb" 1, alpha + 1.0/3.0, delta)
         Assert.AreEqual(get "K" 1, 3.0 * alpha, delta)
 
+        let path = "Kuhn.tmp.batch"
+        finalBatch |> CfrBatch.save path
+        let finalBatch' = CfrBatch.load finalBatch.GetInitialState path
+        Assert.AreEqual(finalBatch.Utilities, finalBatch'.Utilities)
+        Assert.AreEqual(finalBatch.NumIterations, finalBatch'.NumIterations)
+        Assert.AreEqual(finalBatch.InfoSetMap, finalBatch'.InfoSetMap)
+
     let play rng (players : StrategyProfile[]) =
         
         let rec loop (gameState : GameState<_>) =
