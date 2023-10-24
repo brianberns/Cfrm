@@ -9,7 +9,7 @@ type StrategyProfile(strategyMap : StrategyMap) =
     /// Samples an action for the game state with the given
     /// key. Answers the index of the sampled action, or None
     /// if the key isn't present in the profile.
-    member __.Sample(key, rng) =
+    member _.Sample(key, rng) =
         strategyMap
             |> Map.tryFind key
             |> Option.map (fun strategy ->
@@ -18,7 +18,7 @@ type StrategyProfile(strategyMap : StrategyMap) =
     /// Chooses the action with the highest probability in the
     /// given game state. Answers the index of the chosen action,
     /// or None if the key isn't present in the profile.
-    member __.Best(key) =
+    member _.Best(key) =
         strategyMap
             |> Map.tryFind key
             |> Option.map (fun strategy ->
@@ -28,17 +28,17 @@ type StrategyProfile(strategyMap : StrategyMap) =
                     |> fst)
 
     /// Full key/strategy map.
-    member __.Map =
+    member _.Map =
         strategyMap
 
     /// Full key/strategy dictionary.
-    member __.ToDict() =
+    member _.ToDict() =
         strategyMap
             |> Map.toSeq
             |> dict
 
     /// Saves the profile to a file.
-    member __.Save(path) =
+    member _.Save(path) =
         use stream = new FileStream(path, FileMode.Create)
         use wtr = new BinaryWriter(stream)
         wtr.Write(strategyMap.Count)

@@ -13,20 +13,20 @@ type CoordinationAction =
 type CoordinationGame(upDownOpt : Option<UpDownAction>, leftRightOpt : Option<LeftRightAction>) =
     inherit GameState<CoordinationAction>()
 
-    override __.CurrentPlayerIdx =
+    override _.CurrentPlayerIdx =
         match upDownOpt, leftRightOpt with
             | None, None -> 0
             | Some _, None -> 1
             | _ -> failwith "Unexpected"
 
-    override __.Key =
+    override _.Key =
         match upDownOpt, leftRightOpt with
             | None, None -> "0"
             | Some _, None -> "1"
             | Some _, Some _ -> "2"
             | _ -> failwith "Unexpected"
 
-    override __.TerminalValuesOpt =
+    override _.TerminalValuesOpt =
         match upDownOpt, leftRightOpt with
             | Some Up, Some Left
             | Some Down, Some Right -> Some [| 2.0; 4.0 |]
@@ -35,13 +35,13 @@ type CoordinationGame(upDownOpt : Option<UpDownAction>, leftRightOpt : Option<Le
             | _, None -> None
             | _ -> failwith "Unexpected"
 
-    override __.LegalActions =
+    override _.LegalActions =
         match upDownOpt, leftRightOpt with
             | None, None -> [| UpDownAction Up; UpDownAction Down |]
             | Some _, None -> [| LeftRightAction Left; LeftRightAction Right |]
             | _ -> failwith "Unexpected"
 
-    override __.AddAction(action) =
+    override _.AddAction(action) =
         match action, upDownOpt, leftRightOpt with
             | UpDownAction upDown, None, None -> CoordinationGame(Some upDown, None)
             | LeftRightAction leftRight, Some _, None -> CoordinationGame(upDownOpt, Some leftRight)

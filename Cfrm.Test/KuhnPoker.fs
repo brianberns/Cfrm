@@ -69,19 +69,19 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
     do
         Assert.AreEqual(2, cards.Length)
 
-    override __.CurrentPlayerIdx =
+    override _.CurrentPlayerIdx =
         currentPlayerIdx
 
-    override __.Key =
+    override _.Key =
         key
 
-    override __.TerminalValuesOpt =
+    override _.TerminalValuesOpt =
         terminalValuesOpt
 
-    override __.LegalActions =
+    override _.LegalActions =
         legalActions
 
-    override __.AddAction(action) =
+    override _.AddAction(action) =
         let actions' =
             [| yield! actions; yield action |]
         KuhnPokerState(cards, actions') :> _
@@ -150,7 +150,7 @@ type KuhnPokerTest () =
 
         loop (createGame rng)
 
-    member __.Minimize(batchSize, numBatches, delta) =
+    member _.Minimize(batchSize, numBatches, delta) =
         minimize batchSize numBatches delta
 
     [<TestMethod>]
@@ -158,7 +158,7 @@ type KuhnPokerTest () =
         this.Minimize(10000, 10, 0.03)
 
     [<TestMethod>]
-    member __.Play() =
+    member _.Play() =
 
         let nashProfile = StrategyProfile.Load("Kuhn.strategy")
         let randomProfile =
