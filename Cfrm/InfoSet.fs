@@ -1,6 +1,5 @@
 ﻿namespace Cfrm
 
-open System.IO
 open MathNet.Numerics.LinearAlgebra
 
 /// Per-action probability of taking each legal action in a particular
@@ -90,43 +89,14 @@ module InfoSetMap =
                 let infoSetMap' = infoSetMap |> Map.add key infoSet
                 infoSet, infoSetMap'
 
-    /// Saves the given info set map to a file.
-    let save path (infoSetMap : InfoSetMap) =
-        use stream = new FileStream(path, FileMode.Create)
-        use wtr = new BinaryWriter(stream)
-        wtr.Write(infoSetMap.Count)
-        for (KeyValue(key, infoSet)) in infoSetMap do
-            wtr.Write(key)
-            wtr.Write(uint8 infoSet.RegretSum.Count)
-            for sum in infoSet.RegretSum do
-                wtr.Write(sum)
-            wtr.Write(uint8 infoSet.StrategySum.Count)
-            for sum in infoSet.StrategySum do
-                wtr.Write(sum)
-
-    /// Loads a vector
-    let private loadVector (rdr : BinaryReader) =
-        let n = rdr.ReadByte() |> int
-        [|
-            for _ = 1 to n do
-                rdr.ReadDouble()
-        |] |> DenseVector.ofArray
-
-    /// Loads an info set map from a file.
-    let load path =
-        use stream = new FileStream(path, FileMode.Open)
-        use rdr = new BinaryReader(stream)
-        let nInfoSets = rdr.ReadInt32()
-        let infoSetMap =
-            (Map.empty, seq { 1 .. nInfoSets })
-                ||> Seq.fold (fun acc _ ->
-                    let key = rdr.ReadString()
-                    let infoSet =
-                        {
-                            RegretSum = loadVector rdr
-                            StrategySum = loadVector rdr
-                        }
-                    acc |> Map.add key infoSet)
-        if stream.Length <> stream.Position then
-            failwith "Corrupt info set map"
+    /// Creates a strategy profile from the given info set map.
+    let toStrategyProfile (infoSetMap : InfoSetMap) =
         infoSetMap
+            |> Map.map (fun _ infoSet ->
+                let strategy =
+                    infoSet
+                        |> InfoSet.getAverageStrategy
+                        |> Vector.toArray
+                assert(strategy.Length > 1)
+                strategy)
+            |> StrategyProfile

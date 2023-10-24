@@ -1,22 +1,23 @@
 ﻿namespace Cfrm
 
+open System.IO
 open MathNet.Numerics.LinearAlgebra
 
 /// Represents the information accumulated during a batch of
 /// iterations.
 type CfrBatch<'gameState, 'action when 'gameState :> GameState<'action>> =
     {
+        /// Callback to start a new game.
+        GetInitialState : int (*iteration #*) -> 'gameState
+
         /// Per-player utilities.
         Utilities : Vector<float>
-
-        /// Information sets.
-        InfoSetMap : InfoSetMap
 
         /// Total number of iterations run so far.
         NumIterations : int
 
-        /// Callback to start a new game.
-        GetInitialState : int (*iteration #*) -> 'gameState
+        /// Information sets.
+        InfoSetMap : InfoSetMap
 
         /// Strategy profile.
         StrategyProfile : StrategyProfile
@@ -31,10 +32,10 @@ module CfrBatch =
     /// Initializes batch input.
     let create numPlayers getInitialState =
         {
-            Utilities = DenseVector.zero numPlayers
-            InfoSetMap = Map.empty
-            NumIterations = 0
             GetInitialState = getInitialState
+            Utilities = DenseVector.zero numPlayers
+            NumIterations = 0
+            InfoSetMap = Map.empty
             StrategyProfile = StrategyProfile(Map.empty)
         }
 
@@ -146,15 +147,7 @@ module CounterFactualRegret =
                 InfoSetMap = infoSetMap
                 NumIterations = numIterations
                 StrategyProfile =
-                    infoSetMap
-                        |> Map.map (fun _ infoSet ->
-                            let strategy =
-                                infoSet
-                                    |> InfoSet.getAverageStrategy
-                                    |> Vector.toArray
-                            assert(strategy.Length > 1)
-                            strategy)
-                        |> StrategyProfile
+                    InfoSetMap.toStrategyProfile infoSetMap
         }
 
     /// Runs CFR minimization for the given number of iterations.
@@ -163,6 +156,71 @@ module CounterFactualRegret =
             CfrBatch.create numPlayers getInitialState
                 |> minimizeBatch numIterations   // run a single batch
         batch.ExpectedGameValues.ToArray(), batch.StrategyProfile
+
+    /// Saves a vector.
+    let private saveVector (vector : Vector<float>) (wtr : BinaryWriter) =
+        wtr.Write(uint8 vector.Count)
+        for value in vector do
+            wtr.Write(value)
+
+    /// Saves the given batch to a file.
+    let save path batch =
+
+        use stream = new FileStream(path, FileMode.Create)
+        use wtr = new BinaryWriter(stream)
+
+            // expected game values
+        wtr |> saveVector batch.Utilities
+        wtr.Write(batch.NumIterations)
+
+            // info set map
+        wtr.Write(batch.InfoSetMap.Count)
+        for (KeyValue(key, infoSet)) in batch.InfoSetMap do
+            wtr.Write(key)
+            wtr |> saveVector infoSet.RegretSum
+            wtr |> saveVector infoSet.StrategySum
+
+    /// Loads a vector
+    let private loadVector (rdr : BinaryReader) =
+        let n = rdr.ReadByte() |> int
+        [|
+            for _ = 1 to n do
+                rdr.ReadDouble()
+        |] |> DenseVector.ofArray
+
+    /// Loads a batch from a file.
+    let load getInitialState path =
+
+        use stream = new FileStream(path, FileMode.Open)
+        use rdr = new BinaryReader(stream)
+
+            // expected game values
+        let utilities = loadVector rdr
+        let numIterations = rdr.ReadInt32()
+
+            // info set map
+        let infoSetMap =
+            let nInfoSets = rdr.ReadInt32()
+            (Map.empty, seq { 1 .. nInfoSets })
+                ||> Seq.fold (fun acc _ ->
+                    let key = rdr.ReadString()
+                    let infoSet =
+                        {
+                            RegretSum = loadVector rdr
+                            StrategySum = loadVector rdr
+                        }
+                    acc |> Map.add key infoSet)
+
+        if stream.Length <> stream.Position then
+            failwith "Corrupt batch"
+        {
+            GetInitialState = getInitialState
+            Utilities = utilities
+            NumIterations = numIterations
+            InfoSetMap = infoSetMap
+            StrategyProfile =
+                InfoSetMap.toStrategyProfile infoSetMap
+        }
 
 /// C# support.
 [<AbstractClass; Sealed>]
