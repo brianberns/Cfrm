@@ -46,7 +46,7 @@ type StrategyProfile(strategyMap : StrategyMap) =
             wtr.Write(key)
             wtr.Write(uint8 strategy.Length)
             for prob in strategy do
-                wtr.Write(float32 prob)
+                wtr.Write(float32 prob)   // reduce precision to save space
 
     /// Loads a profile from a file.
     static member Load(path) =

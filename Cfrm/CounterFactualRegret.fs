@@ -20,10 +20,11 @@ type CfrBatch<'gameState, 'action when 'gameState :> GameState<'action>> =
 
         /// Strategy profile.
         StrategyProfile : StrategyProfile
-
-        /// Per-player expected game values.
-        ExpectedGameValues : Vector<float>
     }
+
+    /// Per-player expected game values.
+    member batch.ExpectedGameValues =
+        batch.Utilities / float batch.NumIterations
 
 module CfrBatch =
 
@@ -35,7 +36,6 @@ module CfrBatch =
             NumIterations = 0
             GetInitialState = getInitialState
             StrategyProfile = StrategyProfile(Map.empty)
-            ExpectedGameValues = DenseVector.zero numPlayers
         }
 
 module CounterFactualRegret =
@@ -155,7 +155,6 @@ module CounterFactualRegret =
                             assert(strategy.Length > 1)
                             strategy)
                         |> StrategyProfile
-                ExpectedGameValues = utilities / float numIterations
         }
 
     /// Runs CFR minimization for the given number of iterations.
