@@ -71,7 +71,7 @@ module CfrBatch =
         |] |> DenseVector.ofArray
 
     /// Loads a batch from a file.
-    let load getInitialState path =
+    let load path getInitialState =
 
         use stream = new FileStream(path, FileMode.Open)
         use rdr = new BinaryReader(stream)
