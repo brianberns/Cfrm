@@ -134,7 +134,7 @@ type KuhnPokerTest () =
 
         let path = "Kuhn.tmp.batch"
         finalBatch |> CfrBatch.save path
-        let finalBatch' = CfrBatch.load finalBatch.GetInitialState path
+        let finalBatch' = CfrBatch.load path finalBatch.GetInitialState
         Assert.AreEqual(finalBatch.Utilities, finalBatch'.Utilities)
         Assert.AreEqual(finalBatch.NumIterations, finalBatch'.NumIterations)
         Assert.AreEqual(finalBatch.InfoSetMap, finalBatch'.InfoSetMap)
