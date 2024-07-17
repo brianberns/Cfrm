@@ -94,18 +94,6 @@ namespace Cfrm.Test
             }
         }
 
-        /// Shuffles the given array in place.
-        /// From http://rosettacode.org/wiki/Knuth_shuffle#C.23
-        static T[] Shuffle<T>(Random rng, T[] array)
-        {
-            for (int i = 0; i < array.Length; i++)
-            {
-                int j = rng.Next(i, array.Length); // Don't select from the entire array on subsequent loops
-                T temp = array[i]; array[i] = array[j]; array[j] = temp;
-            }
-            return array;
-        }
-
         [TestMethod]
         public void Minimize()
         {
@@ -117,7 +105,8 @@ namespace Cfrm.Test
             var (expectedGameValues, strategyProfile) =
                 CounterFactualRegret.Minimize(numIterations, 2, i =>
                     {
-                        var cards = Shuffle(rng, deck)[0..2];
+                        rng.Shuffle(deck);
+                        var cards = deck[0..2];
                         return new KuhnPokerState(cards);
                     });
 
