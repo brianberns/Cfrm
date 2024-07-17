@@ -69,4 +69,5 @@ type StrategyProfile(strategyMap : StrategyMap) =
             failwith "Corrupt strategy profile"
         profile
 
+/// Tracks a strategy for each information set.
 and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
