@@ -6,22 +6,6 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open Cfrm
 open Cfrm.Test
 
-[<AutoOpen>]
-module RandomExt =
-    type Random with
-
-        /// Shuffles the given array in place.
-        /// From http://rosettacode.org/wiki/Knuth_shuffle#F.23
-        member rng.Shuffle(items : _[]) =
-            let swap i j =
-                let item = items.[i]
-                items.[i] <- items.[j]
-                items.[j] <- item
-            let len = items.Length
-            [0 .. len - 2]
-                |> Seq.iter (fun i -> swap i (rng.Next(i, len)))
-            items
-
 type Card =
     | Jack = 11
     | Queen = 12
@@ -98,7 +82,7 @@ type KuhnPokerTest () =
 
     let createGame (rng : Random) =
         rng.Shuffle(deck)
-            |> Array.take 2
+        Array.take 2 deck
             |> KuhnPokerState.Create
 
     let minimize batchSize numBatches delta =
