@@ -109,7 +109,7 @@ module CounterFactualRegret =
     /// Computes counterfactual reach probability.
     let private getCounterFactualReachProb (probs : Vector<_>) iPlayer =
         let prod vector = vector |> Vector.fold (*) 1.0
-        (prod probs.[0 .. iPlayer-1]) * (prod probs.[iPlayer+1 ..])
+        (prod probs[0 .. iPlayer-1]) * (prod probs[iPlayer+1 ..])
 
     /// Main CFR loop.
     let rec private loop infoSetMap reachProbs (gameState : GameState<_>) =
@@ -129,7 +129,7 @@ module CounterFactualRegret =
                     match legalActions.Length with
                         | 0 -> failwith "No legal actions"
                         | 1 ->   // trivial case
-                            let nextState = gameState.AddAction(legalActions.[0])
+                            let nextState = gameState.AddAction(legalActions[0])
                             loop infoSetMap reachProbs nextState
                         | _ -> cfrCore infoSetMap reachProbs gameState legalActions
 
@@ -149,7 +149,7 @@ module CounterFactualRegret =
             // update strategy for this player in this info set
         let iCurPlayer = gameState.CurrentPlayerIdx
         let strategy, infoSet =
-            infoSet |> InfoSet.getStrategy reachProbs.[iCurPlayer]
+            infoSet |> InfoSet.getStrategy reachProbs[iCurPlayer]
 
             // recurse for each legal action
         let counterFactualValues, infoSetMaps =
@@ -161,7 +161,7 @@ module CounterFactualRegret =
                         reachProbs
                             |> Vector.mapi (fun iPlayer reach ->
                                 if iPlayer = iCurPlayer then
-                                    reach * strategy.[iAction]
+                                    reach * strategy[iAction]
                                 else
                                     reach)
                     loop accMap reachProbs nextState)
@@ -170,7 +170,7 @@ module CounterFactualRegret =
                 |> Array.unzip
         assert(counterFactualValues.Length = legalActions.Length + 1)
         let counterFactualValues =
-            counterFactualValues.[1..] |> DenseMatrix.ofRowSeq
+            counterFactualValues[1..] |> DenseMatrix.ofRowSeq
         let infoSetMap = infoSetMaps |> Array.last
 
             // value of current game state is counterfactual values weighted
@@ -184,7 +184,7 @@ module CounterFactualRegret =
                 getCounterFactualReachProb reachProbs iCurPlayer
             let regrets =
                 cfReachProb *
-                    (counterFactualValues.[0.., iCurPlayer] - result.[iCurPlayer])
+                    (counterFactualValues[0.., iCurPlayer] - result[iCurPlayer])
             infoSet |> InfoSet.accumulateRegret regrets
 
         let infoSetMap = infoSetMap |> Map.add key infoSet

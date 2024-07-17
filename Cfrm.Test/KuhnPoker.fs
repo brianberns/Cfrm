@@ -7,6 +7,7 @@ open Cfrm
 open Cfrm.Test
 
 type Card =
+    | Ten = 10   // used in three-player Kuhn poker
     | Jack = 11
     | Queen = 12
     | King = 13
@@ -15,21 +16,26 @@ type PokerAction =
     | Check = 0
     | Bet = 1
 
+module KuhnPoker =
+
+    let numPlayers = 2
+
+/// Two-player Kuhn poker.
 type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
     inherit GameState<PokerAction>()
 
     let currentPlayerIdx =
-        actions.Length % 2
+        actions.Length % KuhnPoker.numPlayers
 
     let actionString =
         actions
             |> Array.map (fun action ->
-                action.ToString().ToLower().[0])
+                action.ToString().ToLower()[0])
             |> String
 
     let key =
         let cardChar =
-            cards.[currentPlayerIdx].ToString().[0]
+            cards[currentPlayerIdx].ToString()[0]
         sprintf "%c%s" cardChar actionString
 
     let terminalValuesOpt =
@@ -39,13 +45,13 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
             | "bc" ->    // player 0 wins ante only
                 Some [| 1.0; -1.0 |]
             | "cc" ->    // no bets: high card wins ante only
-                let sign = compare cards.[0] cards.[1] |> float
+                let sign = compare cards[0] cards[1] |> float
                 Some [| sign * 1.0; sign * -1.0 |]
             | "cbb" ->   // two bets: high card wins ante and bet
-                let sign = compare cards.[1] cards.[0] |> float
+                let sign = compare cards[1] cards[0] |> float
                 Some [| sign * -2.0; sign * 2.0 |]
             | "bb" ->    // two bets: high card wins ante and bet
-                let sign = compare cards.[0] cards.[1] |> float
+                let sign = compare cards[0] cards[1] |> float
                 Some [| sign * 2.0; sign * -2.0 |]
             | _ -> None
 
@@ -53,7 +59,7 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
         [| PokerAction.Check; PokerAction.Bet |]
 
     do
-        Assert.AreEqual(2, cards.Length)
+        Assert.AreEqual(KuhnPoker.numPlayers, cards.Length)
 
     override _.CurrentPlayerIdx =
         currentPlayerIdx
@@ -82,7 +88,7 @@ type KuhnPokerTest () =
 
     let createGame (rng : Random) =
         rng.Shuffle(deck)
-        Array.take 2 deck
+        Array.take KuhnPoker.numPlayers deck
             |> KuhnPokerState.Create
 
     let minimize batchSize numBatches delta =
@@ -90,7 +96,7 @@ type KuhnPokerTest () =
         let rng = Random(0)
         let batchNums = seq { 1 .. numBatches }
         let initialBatch =
-            CfrBatch.create 2 (fun _ ->
+            CfrBatch.create KuhnPoker.numPlayers (fun _ ->
                 createGame rng)
         let finalBatch =
             (initialBatch, batchNums)
@@ -109,8 +115,8 @@ type KuhnPokerTest () =
         let strategyProfile = StrategyProfile.Load(path)
 
         // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
-        Assert.AreEqual(finalBatch.ExpectedGameValues.[0], -1.0/18.0, delta)
-        let get key i = strategyProfile.Map.[key].[i]
+        Assert.AreEqual(finalBatch.ExpectedGameValues[0], -1.0/18.0, delta)
+        let get key i = strategyProfile.Map[key][i]
         let alpha = get "J" 1
         Assert.IsTrue(alpha >= 0.0)
         Assert.IsTrue(alpha <= 1.0/3.0)
@@ -131,15 +137,15 @@ type KuhnPokerTest () =
             match gameState.TerminalValuesOpt with
                 | None ->
                     let iAction =
-                        let profile = players.[gameState.CurrentPlayerIdx]
+                        let profile = players[gameState.CurrentPlayerIdx]
                         profile.Sample(gameState.Key, rng)
                             |> Option.get
-                    gameState.LegalActions.[iAction]
+                    gameState.LegalActions[iAction]
                         |> gameState.AddAction
                         |> loop
                 | Some values ->
-                    Assert.AreEqual(2, values.Length)
-                    values.[0], values.[1]
+                    Assert.AreEqual(KuhnPoker.numPlayers, values.Length)
+                    values[0], values[1]
 
         loop (createGame rng)
 
