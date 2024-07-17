@@ -1,7 +1,9 @@
 namespace Cfrm.Test
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
+
 open Cfrm
+open Cfrm.Test
 
 type UpDownAction = Up | Down
 type LeftRightAction = Left | Right

@@ -2,7 +2,9 @@ namespace Cfrm.Test
 
 open System
 open Microsoft.VisualStudio.TestTools.UnitTesting
+
 open Cfrm
+open Cfrm.Test
 
 [<AutoOpen>]
 module RandomExt =
