@@ -91,9 +91,9 @@ type KuhnPokerTest () =
         Array.take KuhnPoker.numPlayers deck
             |> KuhnPokerState.Create
 
-    let minimize batchSize numBatches delta =
+    let minimize batchSize numBatches seed delta =
 
-        let rng = Random(0)
+        let rng = Random(seed)
         let batchNums = seq { 1 .. numBatches }
         let initialBatch =
             CfrBatch.create KuhnPoker.numPlayers (fun _ ->
@@ -149,12 +149,15 @@ type KuhnPokerTest () =
 
         loop (createGame rng)
 
-    member _.Minimize(batchSize, numBatches, delta) =
-        minimize batchSize numBatches delta
+    member _.Minimize(batchSize, numBatches, seed, delta) =
+        minimize batchSize numBatches seed delta
 
     [<TestMethod>]
     member this.Solve() =
-        this.Minimize(10000, 10, 0.03)
+        for seed = 0 to 2 do
+            printfn ""
+            printfn "Seed: %A" seed
+            this.Minimize(100000, 10, seed, 0.005)
 
     [<TestMethod>]
     member _.Play() =
