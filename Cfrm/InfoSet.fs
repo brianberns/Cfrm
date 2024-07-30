@@ -39,7 +39,7 @@ module InfoSet =
 
     /// Creates a new strategy for the given info set using the given
     /// reach probability.
-    let getStrategy (reachProb : float) infoSet =
+    let getStrategy reachProb infoSet =
         assert(reachProb >= 0.0 && reachProb <= 1.0)
 
             // compute strategy from current regrets
