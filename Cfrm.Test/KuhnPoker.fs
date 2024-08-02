@@ -85,18 +85,23 @@ type KuhnPokerTest () =
 
     let deck = [| Card.Jack; Card.Queen; Card.King |]
 
-    let createGame (rng : Random) =
-        rng.Shuffle(deck)
-        Array.take KuhnPoker.numPlayers deck
-            |> KuhnPokerState.Create
+    let createGame i =
+        let cards =
+            match i % 6 with
+                | 0 -> [| Card.Jack; Card.Queen |]
+                | 1 -> [| Card.Jack; Card.King |]
+                | 2 -> [| Card.Queen; Card.Jack |]
+                | 3 -> [| Card.Queen; Card.King |]
+                | 4 -> [| Card.King; Card.Jack |]
+                | 5 -> [| Card.King; Card.Queen |]
+                | _ -> failwith "Unexpected"
+        KuhnPokerState.Create(cards)
 
-    let minimize batchSize numBatches seed delta =
+    let minimize batchSize numBatches delta =
 
-        let rng = Random(seed)
         let batchNums = seq { 1 .. numBatches }
         let initialBatch =
-            CfrBatch.create KuhnPoker.numPlayers (fun _ ->
-                createGame rng)
+            CfrBatch.create KuhnPoker.numPlayers createGame
         let finalBatch =
             (initialBatch, batchNums)
                 ||> Seq.fold (fun inBatch _ ->
@@ -130,7 +135,7 @@ type KuhnPokerTest () =
         Assert.AreEqual(finalBatch.NumIterations, finalBatch'.NumIterations)
         Assert.AreEqual(finalBatch.InfoSetMap, finalBatch'.InfoSetMap)
 
-    let play rng (players : StrategyProfile[]) =
+    let play rng i (players : StrategyProfile[]) =
         
         let rec loop (gameState : GameState<_>) =
             match gameState.TerminalValuesOpt with
@@ -146,17 +151,14 @@ type KuhnPokerTest () =
                     Assert.AreEqual(KuhnPoker.numPlayers, values.Length)
                     values[0], values[1]
 
-        loop (createGame rng)
+        loop (createGame i)
 
-    member _.Minimize(batchSize, numBatches, seed, delta) =
-        minimize batchSize numBatches seed delta
+    member _.Minimize(batchSize, numBatches, delta) =
+        minimize batchSize numBatches delta
 
     [<TestMethod>]
     member this.Solve() =
-        for seed = 0 to 2 do
-            printfn ""
-            printfn "Seed: %A" seed
-            this.Minimize(100000, 10, seed, 0.005)
+        this.Minimize(100000, 10, 0.005)
 
     [<TestMethod>]
     member _.Play() =
@@ -178,8 +180,8 @@ type KuhnPokerTest () =
         let rng = Random(0)
         let numIterations = 100000
         let payoff0 =
-            Array.init numIterations (fun _ ->
-                profiles |> play rng |> fst)
+            Array.init numIterations (fun i ->
+                profiles |> play rng i |> fst)
                 |> Array.sum
         let winRate = payoff0 / float numIterations
         Assert.IsTrue(winRate > 0.15, winRate.ToString())
