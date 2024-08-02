@@ -28,8 +28,10 @@ module InfoSet =
             StrategySum = DenseVector.zero numActions
         }
 
-    /// Creates a normalized strategy vector from the given values.
+    /// Creates a normalized strategy vector from the given cumulative
+    /// values.
     let private normalize values : Strategy =
+        assert(Vector.forall (fun x -> x >= 0.0) values)
         let total = Vector.sum values
         if total > 0.0 then
             values / total               // normalize
