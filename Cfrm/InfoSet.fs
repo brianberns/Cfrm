@@ -44,7 +44,7 @@ module InfoSet =
     let getStrategy reachProb infoSet =
         assert(reachProb >= 0.0 && reachProb <= 1.0)
 
-            // compute strategy from current regrets
+            // compute strategy from accumulated positive regrets
         let strategy =
             infoSet.RegretSum
                 |> Vector.map (max 0.0)
