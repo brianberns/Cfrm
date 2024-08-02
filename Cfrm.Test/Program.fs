@@ -20,12 +20,16 @@ module Program =
     let main argv =
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize
-                10000
+                100000
                 KuhnPoker.numPlayers
                 createGame
 
         printfn "Expected game values:"
         for i = 0 to expectedGameValues.Length - 1 do
             printfn $"Player {i}: {expectedGameValues[i]}"
+
+        printfn ""
+        for (KeyValue(key, value)) in strategyProfile.Map do
+            printfn $"{key}: {Seq.toList value}"
 
         0
