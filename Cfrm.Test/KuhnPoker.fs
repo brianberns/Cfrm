@@ -7,7 +7,6 @@ open Cfrm
 open Cfrm.Test
 
 type Card =
-    | Ten = 10   // used in three-player Kuhn poker
     | Jack = 11
     | Queen = 12
     | King = 13
