@@ -83,8 +83,6 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
 [<TestClass>]
 type KuhnPokerTest () =
 
-    let deck = [| Card.Jack; Card.Queen; Card.King |]
-
     let createGame i =
         let cards =
             match i % 6 with
