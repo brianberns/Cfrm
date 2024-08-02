@@ -12,8 +12,8 @@ type Card =
     | King = 13
 
 type PokerAction =
-    | Bet = 0
-    | Check = 1
+    | Check = 0
+    | Bet = 1
 
 module KuhnPoker =
 
@@ -55,7 +55,7 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
             | _ -> None
 
     let legalActions =
-        [| PokerAction.Bet; PokerAction.Check |]
+        [| PokerAction.Check; PokerAction.Bet |]
 
     do
         Assert.AreEqual(KuhnPoker.numPlayers, cards.Length)

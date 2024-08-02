@@ -20,7 +20,7 @@ module Program =
     let main argv =
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize
-                100000
+                60000
                 KuhnPoker.numPlayers
                 createGame
 

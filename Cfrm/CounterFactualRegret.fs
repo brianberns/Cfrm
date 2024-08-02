@@ -8,7 +8,7 @@ open MathNet.Numerics.LinearAlgebra
 type CfrBatch<'gameState, 'action when 'gameState :> GameState<'action>> =
     {
         /// Callback to start a new game.
-        GetInitialState : int (*iteration #*) -> 'gameState
+        GetInitialState : int (*0-based iteration index*) -> 'gameState
 
         /// Per-player utilities.
         Utilities : Vector<float>
@@ -196,11 +196,11 @@ module CounterFactualRegret =
             // accumulate utilties
         let numPlayers = batch.Utilities.Count
         let utilities, infoSetMap =
-            let iterations = seq { 1 .. numIterations }
+            let iterations = seq { 0 .. numIterations - 1 }
             ((batch.Utilities, batch.InfoSetMap), iterations)
-                ||> Seq.fold (fun (accUtils, accMap) iterNum ->
+                ||> Seq.fold (fun (accUtils, accMap) iter ->
                     let utils, accMap =
-                        batch.GetInitialState(iterNum)
+                        batch.GetInitialState(iter)
                             |> loop accMap (DenseVector.create numPlayers 1.0)
                     accUtils + utils, accMap)
 
