@@ -139,6 +139,10 @@ module CounterFactualRegret =
 
     /// Core CFR algorithm.
     and private cfrCore infoSetMap (reachProbs : Vector<_>) gameState legalActions =
+        assert(
+            reachProbs
+                |> Vector.forall (fun reachProb ->
+                    reachProb >= 0.0 && reachProb <= 1.0))
 
             // obtain info set for this game state
         let key = gameState.Key
@@ -148,8 +152,7 @@ module CounterFactualRegret =
 
             // update strategy for this player in this info set
         let iCurPlayer = gameState.CurrentPlayerIdx
-        let strategy, infoSet =
-            infoSet |> InfoSet.getStrategy reachProbs[iCurPlayer]
+        let strategy = InfoSet.getStrategy infoSet
 
             // recurse for each legal action
         let counterFactualValues, infoSetMaps =
@@ -180,12 +183,14 @@ module CounterFactualRegret =
 
             // accumulate regret
         let infoSet =
-            let cfReachProb =
-                getCounterFactualReachProb reachProbs iCurPlayer
             let regrets =
+                let cfReachProb =
+                    getCounterFactualReachProb reachProbs iCurPlayer
                 cfReachProb *
                     (counterFactualValues[0.., iCurPlayer] - result[iCurPlayer])
-            infoSet |> InfoSet.accumulateRegret regrets
+            let strategy =
+                reachProbs[iCurPlayer] * strategy
+            infoSet |> InfoSet.accumulate regrets strategy
 
         let infoSetMap = infoSetMap |> Map.add key infoSet
         result, infoSetMap

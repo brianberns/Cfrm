@@ -39,29 +39,18 @@ module InfoSet =
             (1.0 / float values.Count)   // use uniform strategy when regret is negative
                 |> DenseVector.create values.Count
 
-    /// Creates a new strategy for the given info set using the given
-    /// reach probability.
-    let getStrategy reachProb infoSet =
-        assert(reachProb >= 0.0 && reachProb <= 1.0)
+    /// Computes the current strategy for the given info set from its
+    /// accumulated positive regrets.
+    let getStrategy infoSet =
+        infoSet.RegretSum
+            |> Vector.map (max 0.0)
+            |> normalize
 
-            // compute strategy from accumulated positive regrets
-        let strategy =
-            infoSet.RegretSum
-                |> Vector.map (max 0.0)
-                |> normalize
-
-            // accumulate weighted strategy sum
-        let infoSet' =
-            { infoSet with
-                StrategySum =
-                    infoSet.StrategySum + (reachProb * strategy) }
-
-        strategy, infoSet'
-
-    /// Accumulates the given per-action regrets.
-    let accumulateRegret regrets infoSet =
+    /// Accumulates the given per-action regrets and strategy.
+    let accumulate regrets strategy infoSet =
         { infoSet with
-            RegretSum = infoSet.RegretSum + regrets }
+            RegretSum = infoSet.RegretSum + regrets
+            StrategySum = infoSet.StrategySum + strategy }
 
     /// Gets the average strategy for the given info set. This converges on
     /// a Nash equilibrium.
