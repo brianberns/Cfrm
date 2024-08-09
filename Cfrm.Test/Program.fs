@@ -27,6 +27,7 @@ module Program =
         printfn "Expected game values:"
         for i = 0 to expectedGameValues.Length - 1 do
             printfn $"Player {i}: {expectedGameValues[i]}"
+        assert(expectedGameValues[0] = -0.058233174804782351)
 
         printfn ""
         for (KeyValue(key, value)) in strategyProfile.Map do
