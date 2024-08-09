@@ -70,4 +70,5 @@ type StrategyProfile(strategyMap : StrategyMap) =
         profile
 
 /// Tracks a strategy for each information set.
-and private StrategyMap = Map<string (*InfoSet.Key*), float[]>
+and private StrategyMap =
+    Map<string (*InfoSet.Key*), float[] (*action probabilities*)>
