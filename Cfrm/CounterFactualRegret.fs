@@ -138,7 +138,9 @@ module CounterFactualRegret =
                 DenseVector.ofArray values, infoSetMap
 
     /// Core CFR algorithm.
-    and private cfrCore infoSetMap (reachProbs : Vector<_>) gameState legalActions =
+    and private cfrCore infoSetMap reachProbs gameState legalActions =
+
+            // per-player probabilities of reaching this state
         assert(
             reachProbs
                 |> Vector.forall (fun reachProb ->
