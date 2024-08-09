@@ -2,13 +2,13 @@
 
 open MathNet.Numerics.LinearAlgebra
 
-/// Represents the set of nodes in a game-tree that are indistinguishable
+/// Represents the set of nodes in a game tree that are indistinguishable
 /// for a given player.
 type InfoSet =
     {
         /// Per-action sum of all regrets computed so far. Positive regret
-        /// indicates that we would rather have taken a different action.
-        /// Negative regret indicates that we are happy with the action.
+        /// for an action indicates that we would rather take that action.
+        /// ("Regret" is a confusing term for this concept.)
         RegretSum : Vector<float>
 
         /// Per-action sum of all strategies computed so far.
