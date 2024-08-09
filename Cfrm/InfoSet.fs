@@ -2,10 +2,6 @@
 
 open MathNet.Numerics.LinearAlgebra
 
-/// Per-action probability of taking each legal action in a particular
-/// information set. Probabilities in each instance should sum to 1.0.
-type Strategy = Vector<float>
-
 /// Represents the set of nodes in a game-tree that are indistinguishable
 /// for a given player.
 type InfoSet =
@@ -30,7 +26,7 @@ module InfoSet =
 
     /// Creates a normalized strategy vector from the given cumulative
     /// values.
-    let private normalize values : Strategy =
+    let private normalize values =
         assert(Vector.forall (fun x -> x >= 0.0) values)
         let total = Vector.sum values
         if total > 0.0 then
