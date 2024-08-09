@@ -142,7 +142,7 @@ module CounterFactualRegret =
 
             // obtain info set for this game state
         let key = gameState.Key
-        let infoSet, infoSetMap =
+        let infoSet =
             infoSetMap
                 |> InfoSetMap.getInfoSet key legalActions.Length
 

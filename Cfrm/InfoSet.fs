@@ -85,11 +85,9 @@ module InfoSetMap =
             | Some infoSet ->
                 assert(infoSet.RegretSum.Count = numActions)
                 assert(infoSet.StrategySum.Count = numActions)
-                infoSet, infoSetMap
+                infoSet
             | None ->
-                let infoSet = InfoSet.create numActions
-                let infoSetMap' = infoSetMap |> Map.add key infoSet
-                infoSet, infoSetMap'
+                InfoSet.create numActions
 
     /// Creates a strategy profile from the given info set map.
     let toStrategyProfile (infoSetMap : InfoSetMap) =
