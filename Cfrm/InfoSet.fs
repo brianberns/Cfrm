@@ -42,7 +42,8 @@ module InfoSet =
             |> Vector.map (max 0.0)
             |> normalize
 
-    /// Accumulates the given per-action regrets and strategy.
+    /// Accumulates the given per-action regrets and strategy for an
+    /// info set.
     let accumulate regrets strategy infoSet =
         { infoSet with
             RegretSum = infoSet.RegretSum + regrets
@@ -57,14 +58,14 @@ module InfoSet =
                 if x < 0.001 then 0.0 else x)   // eliminate very low probability actions
             |> normalize
 
-/// Maps keys (which typically represent game histories) to
-/// known info sets.
+/// Maps keys (which represent the state of the game from the
+/// current player's point of view) to info sets.
 type InfoSetMap = Map<string (*InfoSet.Key*), InfoSet>
 
 module InfoSetMap =
 
     /// Obtains an info set for the given key, creating one if
-    /// it doesn't already exist.
+    /// necessary.
     let getInfoSet key numActions (infoSetMap : InfoSetMap) =
         match infoSetMap |> Map.tryFind key with
             | Some infoSet ->

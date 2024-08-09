@@ -1,6 +1,7 @@
 ﻿namespace Cfrm
 
-/// Immutable representation of a game state.
+/// Immutable representation of a game state from the current
+/// player's point of view.
 [<AbstractClass>]
 type GameState<'action>() =
 
@@ -10,7 +11,7 @@ type GameState<'action>() =
     /// Unique key for this game state.
     abstract member Key : string
 
-    /// Per-player payoffs iff this is a terminal game state;
+    /// Per-player payoffs if this is a terminal game state;
     /// None otherwise. F# subclasses should override this.
     abstract member TerminalValuesOpt : Option<float[]>
 
