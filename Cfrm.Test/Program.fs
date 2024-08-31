@@ -2,4 +2,7 @@ namespace Cfrm.Test
 
 module Program =
 
-    LeducHoldemTest().Minimize()
+    try
+        LeducHoldemTest().Minimize()
+    with exn ->
+        printfn $"{exn.Message}"

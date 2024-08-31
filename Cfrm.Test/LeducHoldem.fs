@@ -102,11 +102,27 @@ type LeducHoldemState(
         LeducHoldem.legalActions curRound
 
     let terminalValuesOpt =
-        (*
-        match actionString with
-            | _ -> None
-        *)
-        if legalActions.Length = 0 then Some [| 0.0; 0.0 |]
+        if legalActions.Length = 0 then
+            let size : float = LeducHoldem.potSize rounds
+            match Array.last curRound with
+                | Fold ->
+                    let value =
+                        if currentPlayerIdx = 0 then size
+                        else -size
+                    Some [| value; -value |]
+                | Check
+                | Call ->
+                    let value =
+                        if playerCards[0] = communityCard then
+                            size
+                        elif playerCards[1] = communityCard then
+                            -size
+                        elif playerCards[0] > playerCards[1] then
+                            size
+                        else
+                            -size
+                    Some [| value; -value |]
+                | _ -> failwith $"Unexpected: {key}"
         else None
 
     do
