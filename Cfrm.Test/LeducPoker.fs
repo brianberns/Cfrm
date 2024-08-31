@@ -61,12 +61,28 @@ type LeducPokerState(
         else
             sprintf "%c.%s" playerCardChar actionString
 
+    let potSize =
+
+        let betSize iRound action =
+            let small = 2 * (iRound + 1)
+            match action with
+                | PokerAction.Raise
+                | PokerAction.Call -> small
+                | PokerAction.Reraise -> 2 * small
+                | _ -> 0
+        
+        let ante = LeducPoker.numPlayers
+        ante + Seq.sum [
+            for iRound = 0 to 1 do
+                if rounds.Length > iRound then
+                    rounds[iRound]
+                        |> Seq.sumBy (betSize iRound)
+                else 0
+        ]
+
     let terminalValuesOpt =
         match actionString with
             | _ -> None
-
-    let legalActions =
-        [| PokerAction.Check; PokerAction.Bet |]
 
     do
         Assert.IsTrue(Seq.contains rounds.Length [1; 2])
