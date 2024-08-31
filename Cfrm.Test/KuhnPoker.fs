@@ -19,7 +19,7 @@ module KuhnPoker =
 
     let numPlayers = 2
 
-/// Two-player Kuhn poker.
+/// Kuhn poker.
 type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
     inherit GameState<PokerAction>()
 
