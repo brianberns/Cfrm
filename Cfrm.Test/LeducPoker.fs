@@ -12,8 +12,8 @@ type Rank =
     | King = 13
 
 type Suit =
-    | Hearts = 0
-    | Spades = 1
+    | Hearts
+    | Spades
 
 type Card =
     {
@@ -22,17 +22,55 @@ type Card =
     }
 
 type PokerAction =
-    | Check = 0
-    | Raise = 1
-    | Fold = 2
-    | Reraise = 3
-    | Call = 4
+    | Check
+    | Raise
+    | Fold
+    | Call
+    | Reraise
 
 type Round = PokerAction[]
 
 module LeducPoker =
 
     let numPlayers = 2
+
+    let potSize (rounds : Round[]) =
+
+        let betSize iRound action =
+            let small = 2 * (iRound + 1)
+            match action with
+                | Raise | Call -> small
+                | Reraise -> 2 * small
+                | _ -> 0
+        
+        let ante = numPlayers
+        ante + Seq.sum [
+            for iRound = 0 to 1 do
+                if rounds.Length > iRound then
+                    rounds[iRound]
+                        |> Seq.sumBy (betSize iRound)
+                else 0
+        ]
+
+    let legalActions (round : Round) =
+        match round with
+
+                // first player's turn
+            | [||] -> [| Check; Raise |]
+
+                // second player's turn
+            | [| Check |] -> [| Check; Raise |]
+            | [| Raise |] -> [| Fold; Call; Reraise |]
+
+                // first player's second turn
+            | [| Check; Check |] -> [| |]
+            | [| Check; Raise |] -> [| Fold; Call; Reraise |]
+            | [| Raise; _ |] -> [| |]
+
+                // second player's second turn (they don't really have one)
+            | [| Check; Raise; _ |] -> [| |]
+
+            | _ -> failwith "Unexpected"
 
 /// Leduc poker.
 type LeducPokerState(
@@ -61,28 +99,19 @@ type LeducPokerState(
         else
             sprintf "%c.%s" playerCardChar actionString
 
-    let potSize =
-
-        let betSize iRound action =
-            let small = 2 * (iRound + 1)
-            match action with
-                | PokerAction.Raise
-                | PokerAction.Call -> small
-                | PokerAction.Reraise -> 2 * small
-                | _ -> 0
-        
-        let ante = LeducPoker.numPlayers
-        ante + Seq.sum [
-            for iRound = 0 to 1 do
-                if rounds.Length > iRound then
-                    rounds[iRound]
-                        |> Seq.sumBy (betSize iRound)
-                else 0
-        ]
-
     let terminalValuesOpt =
         match actionString with
             | _ -> None
+
+    let legalActions =
+        let roundActions =
+            rounds
+                |> Array.last
+                |> LeducPoker.legalActions
+        if roundActions.Length = 0 && rounds.Length = 1 then
+            LeducPoker.legalActions Array.empty   // start second round
+        else
+            roundActions
 
     do
         Assert.IsTrue(Seq.contains rounds.Length [1; 2])
