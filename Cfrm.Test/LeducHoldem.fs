@@ -6,16 +6,17 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open Cfrm
 open Cfrm.Test
 
-type LeducPokerAction =
+type LeducHoldemAction =
     | Check
     | Bet
     | Fold
     | Call
     | Raise
 
-type Round = LeducPokerAction[]
+type Round = LeducHoldemAction[]
 
-module LeducPoker =
+/// Leduc Hold'em.
+module LeducHoldem =
 
     let numPlayers = 2
 
@@ -63,17 +64,17 @@ module LeducPoker =
 
             | _ -> failwith "Unexpected"
 
-/// Leduc poker.
-type LeducPokerState(
+/// Leduc Hold'em.
+type LeducHoldemState(
     playerCards : Card[(*iPlayer*)],
     communityCard : Card,
     rounds : Round[]) =
-    inherit GameState<LeducPokerAction>()
+    inherit GameState<LeducHoldemAction>()
 
     let curRound = Array.last rounds
 
     let currentPlayerIdx =
-        curRound.Length % LeducPoker.numPlayers
+        curRound.Length % LeducHoldem.numPlayers
 
     let actionString =
         rounds
@@ -98,7 +99,7 @@ type LeducPokerState(
             sprintf "%c.%s" playerCardChar actionString
 
     let legalActions =
-        LeducPoker.legalActions curRound
+        LeducHoldem.legalActions curRound
 
     let terminalValuesOpt =
         (*
@@ -110,7 +111,7 @@ type LeducPokerState(
 
     do
         Assert.IsTrue(Seq.contains rounds.Length [1; 2])
-        Assert.AreEqual(LeducPoker.numPlayers, playerCards.Length)
+        Assert.AreEqual(LeducHoldem.numPlayers, playerCards.Length)
 
     override _.CurrentPlayerIdx =
         currentPlayerIdx
@@ -136,7 +137,7 @@ type LeducPokerState(
                     yield curRound'
                     let roundOver =
                         curRound'
-                            |> LeducPoker.legalActions
+                            |> LeducHoldem.legalActions
                             |> Array.isEmpty
                     if roundOver && action <> Fold then
                         yield Array.empty
@@ -144,16 +145,16 @@ type LeducPokerState(
                     yield rounds[0]
                     yield curRound'
             |]
-        LeducPokerState(playerCards, communityCard, rounds')
+        LeducHoldemState(playerCards, communityCard, rounds')
 
     static member Create(playerCards, communityCard) =
-        LeducPokerState(
+        LeducHoldemState(
             playerCards,
             communityCard,
             [| Array.empty |])
 
 [<TestClass>]
-type LeducPokerTest () =
+type LeducHoldemTest () =
 
     let deck =
         [|
@@ -169,7 +170,7 @@ type LeducPokerTest () =
 
     let createGame _ =
         rng.Shuffle(deck)
-        LeducPokerState.Create(deck[0..1], deck[2])
+        LeducHoldemState.Create(deck[0..1], deck[2])
 
     [<TestMethod>]
     member _.Minimize() =

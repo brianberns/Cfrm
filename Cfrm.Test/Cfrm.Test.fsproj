@@ -14,7 +14,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <Compile Include="KuhnPoker.fs" />
-    <Compile Include="LeducPoker.fs" />
+    <Compile Include="LeducHoldem.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
