@@ -26,7 +26,7 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : KuhnPokerAction[]) =
     let currentPlayerIdx =
         actions.Length % KuhnPoker.numPlayers
 
-    let actionString =
+    let history =
         actions
             |> Array.map (fun action ->
                 action.ToString().ToLower()[0])
@@ -35,10 +35,10 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : KuhnPokerAction[]) =
     let key =
         let cardChar =
             cards[currentPlayerIdx].ToString()[0]
-        sprintf "%c%s" cardChar actionString
+        sprintf "%c%s" cardChar history
 
     let terminalValuesOpt =
-        match actionString with
+        match history with
             | "cbc" ->   // player 1 wins ante only
                 Some [| -1.0; 1.0 |]
             | "bc" ->    // player 0 wins ante only

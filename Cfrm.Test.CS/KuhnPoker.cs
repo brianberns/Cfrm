@@ -38,7 +38,7 @@ namespace Cfrm.Test
             private readonly Card[] _cards;
             private readonly Action[] _actions;
 
-            private string ActionString
+            private string History
             {
                 get
                 {
@@ -54,14 +54,14 @@ namespace Cfrm.Test
                 _actions.Length % 2;
 
             public override string Key =>
-                $"{_cards[this.CurrentPlayerIdx].ToString()[0]}{this.ActionString}";
+                $"{_cards[this.CurrentPlayerIdx].ToString()[0]}{this.History}";
 
             public override double[] TerminalValues
             {
                 get
                 {
                     int sign;
-                    switch (this.ActionString)
+                    switch (this.History)
                     {
                         case "cbc":   // player 1 wins ante only
                             return new double[] { -1, 1 };

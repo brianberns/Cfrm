@@ -76,7 +76,7 @@ type LeducHoldemState(
     let currentPlayerIdx =
         curRound.Length % LeducHoldem.numPlayers
 
-    let actionString =
+    let history =
         rounds
             |> Array.map (fun round ->
                 round
@@ -94,9 +94,9 @@ type LeducHoldemState(
         let playerCardChar = toChar playerCards[currentPlayerIdx]
         if rounds.Length > 1 then
             let comCardChar = toChar communityCard
-            sprintf "%c%c.%s" playerCardChar comCardChar actionString
+            sprintf "%c%c.%s" playerCardChar comCardChar history
         else
-            sprintf "%c.%s" playerCardChar actionString
+            sprintf "%c.%s" playerCardChar history
 
     let legalActions =
         LeducHoldem.legalActions curRound
@@ -136,6 +136,10 @@ type LeducHoldemState(
         key
 
     override _.TerminalValuesOpt =
+        match terminalValuesOpt with
+            | Some values ->
+                printfn "Values of %s, %A, %A: %A" history playerCards communityCard values
+            | None -> ()
         terminalValuesOpt
 
     override _.LegalActions =
@@ -190,7 +194,7 @@ type LeducHoldemTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 10000
+        let numIterations = 1
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
         printfn "%A" expectedGameValues
