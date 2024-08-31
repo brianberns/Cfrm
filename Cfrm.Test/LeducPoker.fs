@@ -74,11 +74,22 @@ module LeducPoker =
 
 /// Leduc poker.
 type LeducPokerState(
-    currentPlayerIdx,
     playerCards : Card[(*iPlayer*)],
     communityCard : Card,
     rounds : Round[]) =
     inherit GameState<PokerAction>()
+
+    let curRound = Array.last rounds
+
+    let curRoundLegalActions =
+        LeducPoker.legalActions curRound
+
+    let currentPlayerIdx =
+        if curRoundLegalActions.Length = 0 then
+            Assert.AreEqual(1, rounds.Length)
+            0
+        else
+            curRound.Length % LeducPoker.numPlayers
 
     let actionString =
         rounds
@@ -104,14 +115,10 @@ type LeducPokerState(
             | _ -> None
 
     let legalActions =
-        let roundActions =
-            rounds
-                |> Array.last
-                |> LeducPoker.legalActions
-        if roundActions.Length = 0 && rounds.Length = 1 then
+        if curRoundLegalActions.Length = 0 && rounds.Length = 1 then
             LeducPoker.legalActions Array.empty   // start second round
         else
-            roundActions
+            curRoundLegalActions
 
     do
         Assert.IsTrue(Seq.contains rounds.Length [1; 2])
@@ -130,12 +137,29 @@ type LeducPokerState(
         legalActions
 
     override _.AddAction(action) =
-        let actions' =
-            [| yield! actions; yield action |]
-        LeducPokerState(playerCards, actions') :> _
+        let rounds' =
+            [|
+                    // first round
+                [|
+                    yield! rounds[0]
+                    if rounds.Length = 1 && curRoundLegalActions.Length > 0 then
+                        yield action
+                |]
+                    // start of second round?
+                if rounds.Length = 1 && curRoundLegalActions.Length = 0 then
+                    [| action |]
 
-    static member Create(cards) =
-        LeducPokerState(cards, Array.empty)
+                    // continuation of second round?
+                elif rounds.Length > 1 then
+                    [|
+                        yield! rounds[1]
+                        yield action
+                    |]
+            |]
+        LeducPokerState(playerCards, communityCard, rounds')
+
+    static member Create(playerCards, communityCard) =
+        LeducPokerState(playerCards, communityCard)
 
 [<TestClass>]
 type LeducPokerTest () =
