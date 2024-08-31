@@ -6,29 +6,14 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open Cfrm
 open Cfrm.Test
 
-type Rank =
-    | Jack = 11
-    | Queen = 12
-    | King = 13
-
-type Suit =
-    | Hearts
-    | Spades
-
-type Card =
-    {
-        Rank : Rank
-        Suit : Suit
-    }
-
-type PokerAction =
+type LeducPokerAction =
     | Check
     | Raise
     | Fold
     | Call
     | Reraise
 
-type Round = PokerAction[]
+type Round = LeducPokerAction[]
 
 module LeducPoker =
 
@@ -67,7 +52,7 @@ module LeducPoker =
             | [| Check; Raise |] -> [| Fold; Call; Reraise |]
             | [| Raise; _ |] -> [| |]
 
-                // second player's second turn (they don't really have one)
+                // prevent second player's second turn
             | [| Check; Raise; _ |] -> [| |]
 
             | _ -> failwith "Unexpected"
@@ -77,19 +62,12 @@ type LeducPokerState(
     playerCards : Card[(*iPlayer*)],
     communityCard : Card,
     rounds : Round[]) =
-    inherit GameState<PokerAction>()
+    inherit GameState<LeducPokerAction>()
 
     let curRound = Array.last rounds
 
-    let curRoundLegalActions =
-        LeducPoker.legalActions curRound
-
     let currentPlayerIdx =
-        if curRoundLegalActions.Length = 0 then
-            Assert.AreEqual(1, rounds.Length)
-            0
-        else
-            curRound.Length % LeducPoker.numPlayers
+        curRound.Length % LeducPoker.numPlayers
 
     let actionString =
         rounds
@@ -101,8 +79,7 @@ type LeducPokerState(
             |> String.concat "."
 
     let key =
-        let toChar card =
-            card.Rank.ToString()[0]
+        let toChar card = card.ToString()[0]
         let playerCardChar = toChar playerCards[currentPlayerIdx]
         if rounds.Length > 1 then
             let comCardChar = toChar communityCard
@@ -110,15 +87,16 @@ type LeducPokerState(
         else
             sprintf "%c.%s" playerCardChar actionString
 
+    let legalActions =
+        LeducPoker.legalActions curRound
+
     let terminalValuesOpt =
+        (*
         match actionString with
             | _ -> None
-
-    let legalActions =
-        if curRoundLegalActions.Length = 0 && rounds.Length = 1 then
-            LeducPoker.legalActions Array.empty   // start second round
-        else
-            curRoundLegalActions
+        *)
+        if legalActions.Length = 0 then Some [| 0.0; 0.0 |]
+        else None
 
     do
         Assert.IsTrue(Seq.contains rounds.Length [1; 2])
@@ -137,49 +115,58 @@ type LeducPokerState(
         legalActions
 
     override _.AddAction(action) =
+        let curRound' =
+            [|
+                yield! curRound
+                yield action
+            |]
         let rounds' =
             [|
-                    // first round
-                [|
-                    yield! rounds[0]
-                    if rounds.Length = 1 && curRoundLegalActions.Length > 0 then
-                        yield action
-                |]
-                    // start of second round?
-                if rounds.Length = 1 && curRoundLegalActions.Length = 0 then
-                    [| action |]
-
-                    // continuation of second round?
-                elif rounds.Length > 1 then
-                    [|
-                        yield! rounds[1]
-                        yield action
-                    |]
+                if rounds.Length = 1 then
+                    yield curRound'
+                    let startSecond =
+                        curRound'
+                            |> LeducPoker.legalActions
+                            |> Array.isEmpty
+                    if startSecond then
+                        yield Array.empty
+                else
+                    yield rounds[0]
+                    yield curRound'
             |]
         LeducPokerState(playerCards, communityCard, rounds')
 
     static member Create(playerCards, communityCard) =
-        LeducPokerState(playerCards, communityCard)
+        LeducPokerState(
+            playerCards,
+            communityCard,
+            [| Array.empty |])
 
 [<TestClass>]
 type LeducPokerTest () =
 
-    let createGame i =
-        let cards =
-            match i % 6 with
-                | 0 -> [| Card.Jack; Card.Queen |]
-                | 1 -> [| Card.Jack; Card.King |]
-                | 2 -> [| Card.Queen; Card.Jack |]
-                | 3 -> [| Card.Queen; Card.King |]
-                | 4 -> [| Card.King; Card.Jack |]
-                | 5 -> [| Card.King; Card.Queen |]
-                | _ -> failwith "Unexpected"
-        LeducPokerState.Create(cards)
+    let deck =
+        [|
+            Card.Jack
+            Card.Queen
+            Card.King
+            Card.Jack
+            Card.Queen
+            Card.King
+        |]
+
+    let rng = Random(0)
+
+    let createGame _ =
+        rng.Shuffle(deck)
+        LeducPokerState.Create(deck[0..1], deck[2])
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 100000
+        let numIterations = 10000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
         printfn "%A" expectedGameValues
-        printfn "%A" strategyProfile
+        printfn "%A" strategyProfile.Map.Count
+        for (KeyValue(key, value)) in strategyProfile.Map do
+            printfn "%A: %A" key value

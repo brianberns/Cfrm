@@ -11,7 +11,7 @@ type Card =
     | Queen = 12
     | King = 13
 
-type PokerAction =
+type KuhnPokerAction =
     | Check = 0
     | Bet = 1
 
@@ -20,8 +20,8 @@ module KuhnPoker =
     let numPlayers = 2
 
 /// Kuhn poker.
-type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
-    inherit GameState<PokerAction>()
+type KuhnPokerState(cards : Card[(*iPlayer*)], actions : KuhnPokerAction[]) =
+    inherit GameState<KuhnPokerAction>()
 
     let currentPlayerIdx =
         actions.Length % KuhnPoker.numPlayers
@@ -55,7 +55,7 @@ type KuhnPokerState(cards : Card[(*iPlayer*)], actions : PokerAction[]) =
             | _ -> None
 
     let legalActions =
-        [| PokerAction.Check; PokerAction.Bet |]
+        [| KuhnPokerAction.Check; KuhnPokerAction.Bet |]
 
     do
         Assert.AreEqual(KuhnPoker.numPlayers, cards.Length)
