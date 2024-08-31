@@ -20,7 +20,7 @@ module LeducHoldem =
 
     let numPlayers = 2
 
-    let potSize (rounds : Round[]) =
+    let investment (rounds : Round[]) playerIdx =
 
         let betSize iRound action =
             let small = 2 * (iRound + 1)
@@ -29,12 +29,16 @@ module LeducHoldem =
                 | Raise -> 2 * small
                 | _ -> 0
         
-        let ante = numPlayers
+        let ante = 1
         ante + Seq.sum [
             for iRound = 0 to 1 do
                 if rounds.Length > iRound then
                     rounds[iRound]
-                        |> Seq.sumBy (betSize iRound)
+                        |> Seq.indexed
+                        |> Seq.where (fun (iPlayer, _) ->
+                            iPlayer = playerIdx)
+                        |> Seq.sumBy (fun (_, action) ->
+                            betSize iRound action)
                 else 0
         ]
 
@@ -103,25 +107,32 @@ type LeducHoldemState(
 
     let terminalValuesOpt =
         if legalActions.Length = 0 then
-            let size : float = LeducHoldem.potSize rounds
             match Array.last curRound with
                 | Fold ->
+                    let iLoser =
+                        if currentPlayerIdx = 0 then 1
+                        else 0
+                    let size : float = LeducHoldem.investment rounds iLoser
                     let value =
                         if currentPlayerIdx = 0 then size
                         else -size
                     Some [| value; -value |]
                 | Check
                 | Call ->
-                    let value =
-                        if playerCards[0] = communityCard then
-                            size
-                        elif playerCards[1] = communityCard then
-                            -size
-                        elif playerCards[0] > playerCards[1] then
-                            size
-                        else
-                            -size
-                    Some [| value; -value |]
+                    let iLoserOpt =
+                        if playerCards[0] = communityCard then Some 1
+                        elif playerCards[1] = communityCard then Some 0
+                        elif playerCards[0] > playerCards[1] then Some 1
+                        elif playerCards[0] < playerCards[1] then Some 0
+                        else None
+                    match iLoserOpt with
+                        | Some iLoser ->
+                            let size : float = LeducHoldem.investment rounds iLoser
+                            let value =
+                                if iLoser = 0 then -size
+                                else size
+                            Some [| value; -value |]
+                        | None -> Some [| 0.0; 0.0 |]
                 | _ -> failwith $"Unexpected: {key}"
         else None
 
@@ -136,10 +147,6 @@ type LeducHoldemState(
         key
 
     override _.TerminalValuesOpt =
-        match terminalValuesOpt with
-            | Some values ->
-                printfn "Values of %s, %A, %A: %A" history playerCards communityCard values
-            | None -> ()
         terminalValuesOpt
 
     override _.LegalActions =
@@ -194,7 +201,7 @@ type LeducHoldemTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 1
+        let numIterations = 10000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
         printfn "%A" expectedGameValues
