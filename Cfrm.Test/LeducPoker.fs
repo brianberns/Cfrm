@@ -8,10 +8,10 @@ open Cfrm.Test
 
 type LeducPokerAction =
     | Check
-    | Raise
+    | Bet
     | Fold
     | Call
-    | Reraise
+    | Raise
 
 type Round = LeducPokerAction[]
 
@@ -24,8 +24,8 @@ module LeducPoker =
         let betSize iRound action =
             let small = 2 * (iRound + 1)
             match action with
-                | Raise | Call -> small
-                | Reraise -> 2 * small
+                | Bet | Call -> small
+                | Raise -> 2 * small
                 | _ -> 0
         
         let ante = numPlayers
@@ -41,25 +41,25 @@ module LeducPoker =
         match round with
 
                 // first player's turn
-            | [||] -> [| Check; Raise |]
+            | [||] -> [| Check; Bet |]
 
                 // second player's turn
-            | [| Check |] -> [| Check; Raise |]
-            | [| Raise |] -> [| Fold; Call; Reraise |]
+            | [| Check |] -> [| Check; Bet |]
+            | [| Bet |] -> [| Fold; Call; Raise |]
 
                 // first player's second turn
             | [| Check; Check |] -> [| |]
-            | [| Check; Raise |] -> [| Fold; Call; Reraise |]
-            | [| Raise; Reraise |] -> [| Fold; Call |]
-            | [| Raise; _ |] -> [| |]
+            | [| Check; Bet |] -> [| Fold; Call; Raise |]
+            | [| Bet; Raise |] -> [| Fold; Call |]
+            | [| Bet; _ |] -> [| |]
 
                 // second player's second turn
-            | [| Check; Raise; Reraise |] -> [| Fold; Call |]
-            | [| Check; Raise; _ |]
-            | [| Raise; Reraise; _ |] -> [| |]
+            | [| Check; Bet; Raise |] -> [| Fold; Call |]
+            | [| Check; Bet; _ |]
+            | [| Bet; Raise; _ |] -> [| |]
 
                 // no more turns
-            | [| Check; Raise; Reraise; _ |] -> [| |]
+            | [| Check; Bet; Raise; _ |] -> [| |]
 
             | _ -> failwith "Unexpected"
 
@@ -130,11 +130,11 @@ type LeducPokerState(
             [|
                 if rounds.Length = 1 then
                     yield curRound'
-                    let startSecond =
+                    let roundOver =
                         curRound'
                             |> LeducPoker.legalActions
                             |> Array.isEmpty
-                    if startSecond then
+                    if roundOver && action <> Fold then
                         yield Array.empty
                 else
                     yield rounds[0]
@@ -175,4 +175,4 @@ type LeducPokerTest () =
         printfn "%A" expectedGameValues
         printfn "%A" strategyProfile.Map.Count
         for (KeyValue(key, value)) in strategyProfile.Map do
-            printfn "%A: %A" key value
+            printfn "%s: %A" key value
