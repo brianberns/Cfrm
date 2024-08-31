@@ -80,12 +80,12 @@ type LeducPokerState(
             |> Array.map (fun round ->
                 round
                     |> Array.map (function
-                        | Check -> 'x'
-                        | Bet -> 'b'
-                        | Fold -> 'f'
-                        | Call -> 'c'
-                        | Raise -> 'r')
-                    |> String)
+                        | Check -> "Check"
+                        | Bet -> "Bet"
+                        | Fold -> "Fold"
+                        | Call -> "Call"
+                        | Raise -> "Raise")
+                    |> String.concat "")
             |> String.concat "."
 
     let key =
