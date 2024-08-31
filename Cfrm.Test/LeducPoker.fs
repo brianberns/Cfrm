@@ -79,9 +79,13 @@ type LeducPokerState(
         rounds
             |> Array.map (fun round ->
                 round
-                    |> Array.map (fun action ->
-                        action.ToString()[0..1])
-                    |> String.concat "")
+                    |> Array.map (function
+                        | Check -> 'x'
+                        | Bet -> 'b'
+                        | Fold -> 'f'
+                        | Call -> 'c'
+                        | Raise -> 'r')
+                    |> String)
             |> String.concat "."
 
     let key =
@@ -169,7 +173,7 @@ type LeducPokerTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 100
+        let numIterations = 10000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
         printfn "%A" expectedGameValues
