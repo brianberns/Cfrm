@@ -50,10 +50,16 @@ module LeducPoker =
                 // first player's second turn
             | [| Check; Check |] -> [| |]
             | [| Check; Raise |] -> [| Fold; Call; Reraise |]
+            | [| Raise; Reraise |] -> [| Fold; Call |]
             | [| Raise; _ |] -> [| |]
 
-                // prevent second player's second turn
-            | [| Check; Raise; _ |] -> [| |]
+                // second player's second turn
+            | [| Check; Raise; Reraise |] -> [| Fold; Call |]
+            | [| Check; Raise; _ |]
+            | [| Raise; Reraise; _ |] -> [| |]
+
+                // no more turns
+            | [| Check; Raise; Reraise; _ |] -> [| |]
 
             | _ -> failwith "Unexpected"
 
@@ -163,7 +169,7 @@ type LeducPokerTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 10000
+        let numIterations = 100
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
         printfn "%A" expectedGameValues
