@@ -203,10 +203,8 @@ type LeducHoldemTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 100000
+        let numIterations = 50000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
-        printfn "%A" expectedGameValues
-        printfn "%A" strategyProfile.Map.Count
-        for (KeyValue(key, value)) in strategyProfile.Map do
-            printfn "%s: %A" key value
+        Assert.AreEqual(288, strategyProfile.Map.Count)
+        Assert.AreEqual(-0.08, expectedGameValues[0], 0.02)
