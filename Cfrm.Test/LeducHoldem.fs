@@ -85,22 +85,22 @@ type LeducHoldemState(
             |> Array.map (fun round ->
                 round
                     |> Array.map (function
-                        | Check -> "Check"
-                        | Bet -> "Bet"
-                        | Fold -> "Fold"
-                        | Call -> "Call"
-                        | Raise -> "Raise")
-                    |> String.concat "")
-            |> String.concat "."
+                        | Check -> 'x'
+                        | Bet -> 'b'
+                        | Fold -> 'f'
+                        | Call -> 'c'
+                        | Raise -> 'r')
+                    |> String)
+            |> String.concat "d"
 
     let key =
         let toChar card = card.ToString()[0]
         let playerCardChar = toChar playerCards[currentPlayerIdx]
         if rounds.Length > 1 then
             let comCardChar = toChar communityCard
-            sprintf "%c%c.%s" playerCardChar comCardChar history
+            sprintf "%c%c %s" playerCardChar comCardChar history
         else
-            sprintf "%c.%s" playerCardChar history
+            sprintf "%c %s" playerCardChar history
 
     let legalActions =
         LeducHoldem.legalActions curRound
@@ -197,7 +197,9 @@ type LeducHoldemTest () =
 
     let createGame _ =
         rng.Shuffle(deck)
-        LeducHoldemState.Create(deck[0..1], deck[2])
+        LeducHoldemState.Create(
+            deck[0..1],
+            deck[2])
 
     [<TestMethod>]
     member _.Minimize() =
