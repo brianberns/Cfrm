@@ -19,6 +19,8 @@ type Round = LeducHoldemAction[]
 module LeducHoldem =
 
     let numPlayers = 2
+    let numRounds = 2
+    let ante = 1
 
     let investment (rounds : Round[]) playerIdx =
 
@@ -28,19 +30,18 @@ module LeducHoldem =
                 | Bet | Call -> small
                 | Raise -> 2 * small
                 | _ -> 0
-        
-        let ante = 1
-        ante + Seq.sum [
-            for iRound = 0 to 1 do
-                if rounds.Length > iRound then
-                    rounds[iRound]
+
+        let sum =
+            rounds
+                |> Seq.indexed
+                |> Seq.sumBy (fun (iRound, round) ->
+                    round
                         |> Seq.indexed
                         |> Seq.where (fun (iPlay, _) ->
                             iPlay % numPlayers = playerIdx)
                         |> Seq.sumBy (fun (_, action) ->
-                            betSize iRound action)
-                else 0
-        ]
+                            betSize iRound action))
+        ante + sum
 
     let legalActions (round : Round) =
         match round with
