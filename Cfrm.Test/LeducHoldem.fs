@@ -43,31 +43,30 @@ module LeducHoldem =
                             betSize iRound action))
         ante + sum
 
-    let legalActions (round : Round) =
-        match round with
+    let legalActions : Round -> _ = function
 
-                // first player's turn
-            | [||] -> [| Check; Bet |]
+            // first player's first turn
+        | [||] -> [| Check; Bet |]
 
-                // second player's turn
-            | [| Check |] -> [| Check; Bet |]
-            | [| Bet |] -> [| Fold; Call; Raise |]
+            // second player's first turn
+        | [| Check |] -> [| Check; Bet |]
+        | [| Bet |] -> [| Fold; Call; Raise |]
 
-                // first player's second turn
-            | [| Check; Check |] -> [| |]
-            | [| Check; Bet |] -> [| Fold; Call; Raise |]
-            | [| Bet; Raise |] -> [| Fold; Call |]
-            | [| Bet; _ |] -> [| |]
+            // first player's second turn
+        | [| Check; Check |] -> [| |]
+        | [| Check; Bet |] -> [| Fold; Call; Raise |]
+        | [| Bet; Raise |] -> [| Fold; Call |]
+        | [| Bet; _ |] -> [| |]
 
-                // second player's second turn
-            | [| Check; Bet; Raise |] -> [| Fold; Call |]
-            | [| Check; Bet; _ |]
-            | [| Bet; Raise; _ |] -> [| |]
+            // second player's second turn
+        | [| Check; Bet; Raise |] -> [| Fold; Call |]
+        | [| Check; Bet; _ |]
+        | [| Bet; Raise; _ |] -> [| |]
 
-                // no more turns
-            | [| Check; Bet; Raise; _ |] -> [| |]
+            // no more turns
+        | [| Check; Bet; Raise; _ |] -> [| |]
 
-            | _ -> failwith "Unexpected"
+        | _ -> failwith "Unexpected"
 
 /// Leduc Hold'em.
 type LeducHoldemState(
