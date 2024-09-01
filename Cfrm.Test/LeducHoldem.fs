@@ -35,8 +35,8 @@ module LeducHoldem =
                 if rounds.Length > iRound then
                     rounds[iRound]
                         |> Seq.indexed
-                        |> Seq.where (fun (iPlayer, _) ->
-                            iPlayer = playerIdx)
+                        |> Seq.where (fun (iPlay, _) ->
+                            iPlay % numPlayers = playerIdx)
                         |> Seq.sumBy (fun (_, action) ->
                             betSize iRound action)
                 else 0
@@ -203,7 +203,7 @@ type LeducHoldemTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 10000
+        let numIterations = 100000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 createGame
         printfn "%A" expectedGameValues
