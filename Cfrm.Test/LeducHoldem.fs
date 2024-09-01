@@ -6,13 +6,25 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open Cfrm
 open Cfrm.Test
 
+/// Possible actions in Leduc Hold'em.
 type LeducHoldemAction =
+
+    /// Passes turn to the next player.
     | Check
+
+    /// Places a bet.
     | Bet
+
+    /// Surrenders the pot.
     | Fold
+
+    /// Matches the current bet.
     | Call
+
+    /// Matches the current bet, and places a new bet.
     | Raise
 
+/// A round is a series of actions.
 type Round = LeducHoldemAction[]
 
 /// Leduc Hold'em.
@@ -22,10 +34,11 @@ module LeducHoldem =
     let numRounds = 2
     let ante = 1
 
+    /// How much has the given player invested in the pot?
     let investment (rounds : Round[]) playerIdx =
 
         let betSize iRound action =
-            let small = 2 * (iRound + 1)
+            let small = 2 * (iRound + 1)   // 2, 4, ...
             match action with
                 | Bet | Call -> small
                 | Raise -> 2 * small
@@ -43,6 +56,8 @@ module LeducHoldem =
                             betSize iRound action))
         ante + sum
 
+    /// What are the legal actions at this point in the
+    /// given round?
     let legalActions : Round -> _ = function
 
             // first player's first turn
@@ -68,19 +83,22 @@ module LeducHoldem =
 
         | _ -> failwith "Unexpected"
 
-/// Leduc Hold'em.
+/// Leduc Hold'em game state.
 type LeducHoldemState(
     playerCards : Card[(*iPlayer*)],
     communityCard : Card,
     rounds : Round[]) =
     inherit GameState<LeducHoldemAction>()
 
+    /// Current round. Will be empty at the start of a round.
     let curRound = Array.last rounds
 
+    /// Whose turn is it?
     let currentPlayerIdx =
         curRound.Length % LeducHoldem.numPlayers
 
-        // https://github.com/scfenton6/leduc-cfr-poker-bot
+    /// Info set key from the current player's point of view.
+    // https://github.com/scfenton6/leduc-cfr-poker-bot
     let key =
         let history =
             rounds
@@ -101,9 +119,11 @@ type LeducHoldemState(
         else
             sprintf "%c %s" playerCardChar history
 
+    /// Legal actions at this point in the game.
     let legalActions =
         LeducHoldem.legalActions curRound
 
+    /// Outcome of this game, if it is over.
     let terminalValuesOpt =
         if legalActions.Length = 0 then
             match Array.last curRound with
