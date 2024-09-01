@@ -80,20 +80,19 @@ type LeducHoldemState(
     let currentPlayerIdx =
         curRound.Length % LeducHoldem.numPlayers
 
-    let history =
-        rounds
-            |> Array.map (fun round ->
-                round
-                    |> Array.map (function
+        // https://github.com/scfenton6/leduc-cfr-poker-bot
+    let key =
+        let history =
+            rounds
+                |> Array.map (
+                    Array.map (function
                         | Check -> 'x'
                         | Bet -> 'b'
                         | Fold -> 'f'
                         | Call -> 'c'
                         | Raise -> 'r')
-                    |> String)
-            |> String.concat "d"
-
-    let key =
+                        >> String)
+                |> String.concat "d"
         let toChar card = card.ToString()[0]
         let playerCardChar = toChar playerCards[currentPlayerIdx]
         if rounds.Length > 1 then
@@ -112,7 +111,8 @@ type LeducHoldemState(
                     let iLoser =
                         if currentPlayerIdx = 0 then 1
                         else 0
-                    let size : float = LeducHoldem.investment rounds iLoser
+                    let size : float =
+                        LeducHoldem.investment rounds iLoser
                     let value =
                         if currentPlayerIdx = 0 then size
                         else -size
@@ -127,7 +127,8 @@ type LeducHoldemState(
                         else None
                     match iLoserOpt with
                         | Some iLoser ->
-                            let size : float = LeducHoldem.investment rounds iLoser
+                            let size : float =
+                                LeducHoldem.investment rounds iLoser
                             let value =
                                 if iLoser = 0 then -size
                                 else size
@@ -137,20 +138,14 @@ type LeducHoldemState(
         else None
 
     do
-        Assert.IsTrue(Seq.contains rounds.Length [1; 2])
+        Assert.IsTrue(rounds.Length > 0)
+        Assert.IsTrue(rounds.Length <= LeducHoldem.numRounds)
         Assert.AreEqual(LeducHoldem.numPlayers, playerCards.Length)
 
-    override _.CurrentPlayerIdx =
-        currentPlayerIdx
-
-    override _.Key =
-        key
-
-    override _.TerminalValuesOpt =
-        terminalValuesOpt
-
-    override _.LegalActions =
-        legalActions
+    override _.CurrentPlayerIdx = currentPlayerIdx
+    override _.Key = key
+    override _.TerminalValuesOpt = terminalValuesOpt
+    override _.LegalActions = legalActions
 
     override _.AddAction(action) =
         let curRound' =
