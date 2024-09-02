@@ -1,6 +1,7 @@
 namespace Cfrm.Test
 
 open System
+
 open Microsoft.VisualStudio.TestTools.UnitTesting
 
 open Cfrm
@@ -195,23 +196,34 @@ type LeducHoldemState(
             communityCard,
             [| Array.empty |])
 
+module List = 
+
+    // http://stackoverflow.com/questions/286427/calculating-permutations-in-f
+    let rec permutations = function
+        | []      -> seq [List.empty]
+        | x :: xs -> Seq.collect (insertions x) (permutations xs)
+    and insertions x = function
+        | []             -> [[x]]
+        | (y :: ys) as xs -> (x::xs)::(List.map (fun x -> y::x) (insertions x ys))
+
 [<TestClass>]
 type LeducHoldemTest () =
 
-    let deck =
-        [|
+    let decks =
+        [
             Card.Jack
             Card.Queen
             Card.King
             Card.Jack
             Card.Queen
             Card.King
-        |]
+        ]
+            |> List.permutations
+            |> Seq.map Seq.toArray
+            |> Seq.toArray
 
-    let rng = Random(0)
-
-    let createGame _ =
-        rng.Shuffle(deck)
+    let createGame i =
+        let deck = decks[i % decks.Length]
         LeducHoldemState.Create(
             deck[0..1],
             deck[2])
