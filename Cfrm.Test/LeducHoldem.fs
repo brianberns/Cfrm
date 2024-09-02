@@ -128,6 +128,8 @@ type LeducHoldemState(
     let terminalValuesOpt =
         if legalActions.Length = 0 then
             match Array.last curRound with
+
+                    // current player wins
                 | Fold ->
                     let iLoser =
                         if currentPlayerIdx = 0 then 1
@@ -138,6 +140,8 @@ type LeducHoldemState(
                         if currentPlayerIdx = 0 then size
                         else -size
                     Some [| value; -value |]
+
+                    // showdown
                 | Check
                 | Call ->
                     let iLoserOpt =
@@ -169,11 +173,15 @@ type LeducHoldemState(
     override _.LegalActions = legalActions
 
     override _.AddAction(action) =
+
+            // add action to the current round
         let curRound' =
             [|
                 yield! curRound
                 yield action
             |]
+
+            // create next game state
         let rounds' =
             [|
                 if rounds.Length = 1 then
@@ -182,7 +190,7 @@ type LeducHoldemState(
                         curRound'
                             |> LeducHoldem.legalActions
                             |> Array.isEmpty
-                    if roundOver && action <> Fold then
+                    if roundOver && action <> Fold then   // start next round?
                         yield Array.empty
                 else
                     yield rounds[0]
