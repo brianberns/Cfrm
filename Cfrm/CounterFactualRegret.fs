@@ -171,11 +171,12 @@ module CounterFactualRegret =
                                     reach)
                     loop accMap reachProbs nextState)
                         (DenseVector.ofArray Array.empty, infoSetMap)
+                |> Seq.skip 1   // skip initial state
                 |> Seq.toArray
                 |> Array.unzip
-        assert(counterFactualValues.Length = legalActions.Length + 1)
+        assert(counterFactualValues.Length = legalActions.Length)
         let counterFactualValues =
-            counterFactualValues[1..] |> DenseMatrix.ofRowSeq
+            counterFactualValues |> DenseMatrix.ofRowSeq
         let infoSetMap = infoSetMaps |> Array.last
 
             // value of current game state is counterfactual values weighted
