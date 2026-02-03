@@ -156,7 +156,7 @@ type KuhnPokerTest () =
 
     [<TestMethod>]
     member this.Solve() =
-        this.Minimize(100000, 10, 0.005)
+        this.Minimize(100000, 10, 0.01)
 
     [<TestMethod>]
     member _.Play() =

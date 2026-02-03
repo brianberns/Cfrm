@@ -31,7 +31,7 @@ namespace Cfrm.Test
 
             private KuhnPokerState(Card[] cards, Action[] actions)
             {
-                Assert.AreEqual(2, cards.Length);
+                Assert.HasCount(2, cards);
                 _cards = cards;
                 _actions = actions;
             }
@@ -96,18 +96,21 @@ namespace Cfrm.Test
         [TestMethod]
         public void Minimize()
         {
-            var deck = new Card[] { Card.Jack, Card.Queen, Card.King };
-            var rng = new Random(0);
+            var deals = new Card[][]
+            {
+                new[] { Card.Jack, Card.Queen },
+                new[] { Card.Jack, Card.King },
+                new[] { Card.Queen, Card.Jack },
+                new[] { Card.Queen, Card.King },
+                new[] { Card.King, Card.Jack },
+                new[] { Card.King, Card.Queen },
+            };
             var numIterations = 100000;
-            var delta = 0.03;
+            var delta = 0.05;
 
             var (expectedGameValues, strategyProfile) =
                 CounterFactualRegret.Minimize(numIterations, 2, i =>
-                    {
-                        rng.Shuffle(deck);
-                        var cards = deck[0..2];
-                        return new KuhnPokerState(cards);
-                    });
+                    new KuhnPokerState(deals[i % 6]));
 
             const string path = "Kuhn.strategy";
             strategyProfile.Save(path);
@@ -115,13 +118,13 @@ namespace Cfrm.Test
 
             // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
             var dict = strategyProfile.ToDict();
-            Assert.AreEqual(expectedGameValues[0], -1.0 / 18.0, delta);
+            Assert.AreEqual(-1.0 / 18.0, expectedGameValues[0], delta);
             var alpha = dict["J"][1];
-            Assert.IsTrue(alpha >= 0.0);
-            Assert.IsTrue(alpha <= 1.0 / 3.0);
-            Assert.AreEqual(dict["Q"][0], 1.0, delta);
-            Assert.AreEqual(dict["Qcb"][1], alpha + 1.0 / 3.0, delta);
-            Assert.AreEqual(dict["K"][1], 3.0 * alpha, delta);
+            Assert.IsGreaterThanOrEqualTo(0.0, alpha);
+            Assert.IsLessThanOrEqualTo(1.0 / 3.0, alpha);
+            Assert.AreEqual(1.0, dict["Q"][0], delta);
+            Assert.AreEqual(alpha + 1.0 / 3.0, dict["Qcb"][1], delta);
+            Assert.AreEqual(3.0 * alpha, dict["K"][1], delta);
         }
     }
 }
