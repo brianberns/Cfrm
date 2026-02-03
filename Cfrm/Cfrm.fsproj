@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Authors>Brian Berns</Authors>
     <Company>Bernsrite Industries</Company>
     <Description>Counterfactual Regret Minimization for multiple players.</Description>
@@ -9,7 +9,7 @@
     <PackageLicenseFile>License</PackageLicenseFile>
     <PackageIcon>Icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/brianberns/Cfrm</RepositoryUrl>
-    <Version>2.6.0</Version>
+    <Version>2.7.0</Version>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
