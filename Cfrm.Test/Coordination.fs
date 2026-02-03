@@ -56,7 +56,7 @@ type CoordinationGameTest () =
 
     [<TestMethod>]
     member _.Minimize() =
-        let numIterations = 10000
+        let numIterations = 100000
         let expectedGameValues, strategyProfile =
             CounterFactualRegret.minimize numIterations 2 (fun _ -> CoordinationGame.Initial)
 

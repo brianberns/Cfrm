@@ -1,6 +1,8 @@
 ﻿namespace Cfrm
 
+open System
 open System.IO
+open System.Threading.Tasks
 open MathNet.Numerics.LinearAlgebra
 
 /// Represents the information accumulated during a batch of
@@ -112,7 +114,7 @@ module CounterFactualRegret =
         (prod probs[0 .. iPlayer-1]) * (prod probs[iPlayer+1 ..])
 
     /// Main CFR loop.
-    let rec private loop infoSetMap reachProbs (gameState : GameState<_>) =
+    let rec private loop (cdict : ConcurrentInfoSetMap.T) reachProbs (gameState : GameState<_>) =
 
         match gameState.TerminalValuesOpt with
 
@@ -121,7 +123,7 @@ module CounterFactualRegret =
 
                     // can prune node? (see https://github.com/deepmind/open_spiel/issues/102)
                 if reachProbs |> Vector.forall ((=) 0.0) then
-                    DenseVector.zero reachProbs.Count, infoSetMap
+                    DenseVector.zero reachProbs.Count
 
                     // evaluate node
                 else
@@ -130,15 +132,15 @@ module CounterFactualRegret =
                         | 0 -> failwith "No legal actions"
                         | 1 ->   // trivial case
                             let nextState = gameState.AddAction(legalActions[0])
-                            loop infoSetMap reachProbs nextState
-                        | _ -> cfrCore infoSetMap reachProbs gameState legalActions
+                            loop cdict reachProbs nextState
+                        | _ -> cfrCore cdict reachProbs gameState legalActions
 
                 // game is over
             | Some values ->
-                DenseVector.ofArray values, infoSetMap
+                DenseVector.ofArray values
 
     /// Core CFR algorithm.
-    and private cfrCore infoSetMap reachProbs gameState legalActions =
+    and private cfrCore (cdict : ConcurrentInfoSetMap.T) reachProbs gameState legalActions =
 
             // per-player probabilities of reaching this state
         assert(
@@ -149,18 +151,17 @@ module CounterFactualRegret =
             // obtain info set for this game state
         let key = gameState.Key
         let infoSet =
-            infoSetMap
-                |> InfoSetMap.getInfoSet key legalActions.Length
+            cdict
+                |> ConcurrentInfoSetMap.getInfoSet key legalActions.Length
 
             // get strategy for this player in this info set
         let iCurPlayer = gameState.CurrentPlayerIdx
         let strategy = InfoSet.getStrategy infoSet
 
             // recurse for each legal action
-        let counterFactualValues, infoSetMaps =
+        let counterFactualValues =
             legalActions
-                |> Seq.indexed
-                |> Seq.scan (fun (_, accMap) (iAction, action) ->
+                |> Array.mapi (fun iAction action ->
                     let nextState = gameState.AddAction(action)
                     let reachProbs =
                         reachProbs
@@ -169,15 +170,9 @@ module CounterFactualRegret =
                                     reach * strategy[iAction]
                                 else
                                     reach)
-                    loop accMap reachProbs nextState)
-                        (DenseVector.ofArray Array.empty, infoSetMap)
-                |> Seq.skip 1   // skip initial state
-                |> Seq.toArray
-                |> Array.unzip
-        assert(counterFactualValues.Length = legalActions.Length)
-        let counterFactualValues =
-            counterFactualValues |> DenseMatrix.ofRowSeq
-        let infoSetMap = infoSetMaps |> Array.last
+                    loop cdict reachProbs nextState)
+                |> DenseMatrix.ofRowSeq
+        assert(counterFactualValues.RowCount = legalActions.Length)
 
             // value of current game state is counterfactual values weighted
             // by action probabilities
@@ -185,43 +180,45 @@ module CounterFactualRegret =
         assert(result.Count = reachProbs.Count)
 
             // accumulate regrets and strategy
-        let infoSet =
-            let regrets =
-                let cfReachProb =
-                    getCounterFactualReachProb reachProbs iCurPlayer
-                cfReachProb *
-                    (counterFactualValues[0.., iCurPlayer] - result[iCurPlayer])
-            let strategy =
-                reachProbs[iCurPlayer] * strategy
-            infoSet |> InfoSet.accumulate regrets strategy
+        let regrets =
+            let cfReachProb =
+                getCounterFactualReachProb reachProbs iCurPlayer
+            cfReachProb *
+                (counterFactualValues[0.., iCurPlayer] - result[iCurPlayer])
+        let strategy =
+            reachProbs[iCurPlayer] * strategy
+        cdict |> ConcurrentInfoSetMap.accumulate key regrets strategy
 
-        let infoSetMap = infoSetMap |> Map.add key infoSet
-        result, infoSetMap
+        result
 
     /// Runs a CFR minimization batch.
     let minimizeBatch numIterations batch =
 
-            // accumulate utilties
         let numPlayers = batch.Utilities.Count
-        let utilities, infoSetMap =
-            let iterations = seq { 0 .. numIterations - 1 }
-            ((batch.Utilities, batch.InfoSetMap), iterations)
-                ||> Seq.fold (fun (accUtils, accMap) iter ->
-                    let utils, accMap =
-                        batch.GetInitialState(iter)
-                            |> loop accMap (DenseVector.create numPlayers 1.0)
-                    accUtils + utils, accMap)
+        let cdict = ConcurrentInfoSetMap.ofMap batch.InfoSetMap
 
-            // compute equilibrium strategies and expected game values
-        let numIterations = batch.NumIterations + numIterations
-        {
-            batch with
-                Utilities = utilities
-                InfoSetMap = infoSetMap
-                NumIterations = numIterations
-                StrategyProfile =
-                    InfoSetMap.toStrategyProfile infoSetMap
-        }
+        let utilitiesLock = obj ()
+        let mutable utilities = batch.Utilities
+        Parallel.For(
+            0, numIterations,
+            ParallelOptions(MaxDegreeOfParallelism = Environment.ProcessorCount),
+            (fun () -> DenseVector.zero numPlayers),
+            (fun iter _ (localUtils : Vector<float>) ->
+                let utils =
+                    batch.GetInitialState(iter)
+                        |> loop cdict (DenseVector.create numPlayers 1.0)
+                localUtils + utils),
+            fun localUtils ->
+                lock utilitiesLock (fun () ->
+                    utilities <- utilities + localUtils))
+        |> ignore
+
+        let infoSetMap = ConcurrentInfoSetMap.toMap cdict
+        { batch with
+            Utilities = utilities
+            InfoSetMap = infoSetMap
+            NumIterations = batch.NumIterations + numIterations
+            StrategyProfile = InfoSetMap.toStrategyProfile infoSetMap }
 
     /// Runs CFR minimization for the given number of iterations.
     let minimize numIterations numPlayers getInitialState =

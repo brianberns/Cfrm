@@ -96,18 +96,21 @@ namespace Cfrm.Test
         [TestMethod]
         public void Minimize()
         {
-            var deck = new Card[] { Card.Jack, Card.Queen, Card.King };
-            var rng = new Random(0);
+            Card[][] deals =
+            [
+                [Card.Jack, Card.Queen],
+                [Card.Jack, Card.King],
+                [Card.Queen, Card.Jack],
+                [Card.Queen, Card.King],
+                [Card.King, Card.Jack],
+                [Card.King, Card.Queen],
+            ];
             var numIterations = 100000;
             var delta = 0.03;
 
             var (expectedGameValues, strategyProfile) =
                 CounterFactualRegret.Minimize(numIterations, 2, i =>
-                    {
-                        rng.Shuffle(deck);
-                        var cards = deck[0..2];
-                        return new KuhnPokerState(cards);
-                    });
+                    new KuhnPokerState(deals[i % 6]));
 
             const string path = "Kuhn.strategy";
             strategyProfile.Save(path);

@@ -1,5 +1,6 @@
 ﻿namespace Cfrm
 
+open System.Collections.Concurrent
 open MathNet.Numerics.LinearAlgebra
 
 /// Represents the set of nodes in a game tree that are indistinguishable
@@ -86,3 +87,25 @@ module InfoSetMap =
                 assert(strategy.Length > 1)
                 strategy)
             |> StrategyProfile
+
+module ConcurrentInfoSetMap =
+
+    type T = ConcurrentDictionary<string, InfoSet>
+
+    let ofMap (map : InfoSetMap) : T =
+        T(map |> Map.toSeq |> dict)
+
+    let toMap (cdict : T) : InfoSetMap =
+        cdict
+            |> Seq.map (fun kv -> kv.Key, kv.Value)
+            |> Map.ofSeq
+
+    let getInfoSet key numActions (cdict : T) =
+        cdict.GetOrAdd(key, fun _ -> InfoSet.create numActions)
+
+    let accumulate key (regrets : Vector<float>) (strategy : Vector<float>) (cdict : T) =
+        cdict.AddOrUpdate(
+            key,
+            (fun _ -> InfoSet.create regrets.Count |> InfoSet.accumulate regrets strategy),
+            (fun _ existing -> existing |> InfoSet.accumulate regrets strategy))
+        |> ignore
