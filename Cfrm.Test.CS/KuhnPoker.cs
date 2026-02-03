@@ -3,6 +3,8 @@ using System.Linq;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+[assembly: Parallelize]
+
 namespace Cfrm.Test
 {
     [TestClass]
@@ -31,7 +33,7 @@ namespace Cfrm.Test
 
             private KuhnPokerState(Card[] cards, Action[] actions)
             {
-                Assert.AreEqual(2, cards.Length);
+                Assert.HasCount(2, cards);
                 _cards = cards;
                 _actions = actions;
             }
@@ -118,11 +120,11 @@ namespace Cfrm.Test
 
             // https://en.wikipedia.org/wiki/Kuhn_poker#Optimal_strategy
             var dict = strategyProfile.ToDict();
-            Assert.AreEqual(expectedGameValues[0], -1.0 / 18.0, delta);
+            Assert.AreEqual(-1.0 / 18.0, expectedGameValues[0], delta);
             var alpha = dict["J"][1];
-            Assert.IsTrue(alpha >= 0.0);
-            Assert.IsTrue(alpha <= 1.0 / 3.0);
-            Assert.AreEqual(dict["Q"][0], 1.0, delta);
+            Assert.IsGreaterThanOrEqualTo(0.0, alpha);
+            Assert.IsLessThanOrEqualTo(1.0 / 3.0, alpha);
+            Assert.AreEqual(1.0, dict["Q"][0], delta);
             Assert.AreEqual(dict["Qcb"][1], alpha + 1.0 / 3.0, delta);
             Assert.AreEqual(dict["K"][1], 3.0 * alpha, delta);
         }
